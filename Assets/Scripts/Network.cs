@@ -94,7 +94,7 @@ public class Neuron : _Neuron
     public static void NeuronCrossover(Neuron neuron, Neuron parent1, Neuron parent2)
     {
         List<double> averagedWeights = Utils.ListsAverage(parent1.weights, parent2.weights);
-        double averagedBias = (parent1.bias + parent2.bias / 2.0);
+        double averagedBias = (parent1.bias + parent2.bias) / 2.0;
         neuron.weights = averagedWeights;
         neuron.bias = averagedBias;
     }
@@ -270,10 +270,10 @@ public class NeuralNetwork
 
     public override string ToString()
     {
-        string s = String.Format("id: {0}\n", id);
+        string s = String.Format("id: {0}", id);
         foreach (_Neuron neuron in neurons)
         {
-            s += String.Format("    {0}\n", neuron.ToString());
+            s += String.Format("    {0}", neuron.ToString());
         }
         return s;
     }

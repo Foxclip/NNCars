@@ -10,6 +10,7 @@ public class GameController : MonoBehaviour
     public float crossoverPower = 2;
     public float mutationPower = 10;
     public float maxMutation = 1;
+    public float speedupTimeScale = 10;
 
     public GameObject carPrefab;
     public GameObject carSpawnPoint;
@@ -21,9 +22,14 @@ public class GameController : MonoBehaviour
     public List<NeuralNetwork> generation = new List<NeuralNetwork>();
 
     private GameObject currentCar;
+    private NeuralNetwork bestNetwork;
     private double deathTimer = 0.0;
     private int generationIndex = 0;
     private int generationMemberIndex = -1;
+    private Vector3 previousPosition;
+    private double carDistance = 0.0;
+
+    private bool fastForward = false;
 
     void Start()
     {
@@ -36,6 +42,7 @@ public class GameController : MonoBehaviour
             newNetwork.Mutate(10, 1);
             generation.Add(newNetwork);
         }
+        bestNetwork = generation[0];
 
         NextCar();
 
@@ -43,7 +50,17 @@ public class GameController : MonoBehaviour
 
     void Update()
     {
-        
+        if(Input.GetKeyDown("space"))
+        {
+            if(fastForward)
+            {
+                Time.timeScale = 1.0f;
+            } else
+            {
+                Time.timeScale = speedupTimeScale;
+            }
+            fastForward = !fastForward;
+        }
     }
 
     void FixedUpdate()
@@ -63,7 +80,9 @@ public class GameController : MonoBehaviour
             deathTimer = 0.0;
         }
 
-        generation[generationMemberIndex].fitness = 1.0 / (Vector3.Distance(currentCar.transform.position, finish.transform.position) + 1.0);
+        carDistance += Vector3.Distance(currentCar.transform.position, previousPosition);
+        previousPosition = currentCar.transform.position;
+        generation[generationMemberIndex].fitness = carDistance;
 
     }
 
@@ -75,8 +94,12 @@ public class GameController : MonoBehaviour
             Debug.Log("Fitness: " + generation[generationMemberIndex].fitness);
         }
 
-        generationMemberIndex++;
+        if (generationMemberIndex == 0) {
+            Debug.Log("generation[0]");
+            Debug.Log(generation[0]);
+        }
 
+        generationMemberIndex++;
 
         if (generationMemberIndex > populationSize - 1)
         {
@@ -88,8 +111,13 @@ public class GameController : MonoBehaviour
             {
                 if(i == 0)
                 {
-                    NeuralNetwork newBestNetwork = NeuralNetwork.Crossover(generation[0], generation[0]);
-                    newGeneration.Add(newBestNetwork);
+                    if (generation[0].fitness > bestNetwork.fitness)
+                    {
+                        bestNetwork = generation[0];
+                        Debug.Log("NEW BEST Id: " + bestNetwork.id + " Fitness: " + bestNetwork.fitness);
+                        Debug.Log(bestNetwork);
+                    }
+                    newGeneration.Add(NeuralNetwork.Crossover(bestNetwork, bestNetwork));
                     continue;
                 }
 
@@ -120,10 +148,12 @@ public class GameController : MonoBehaviour
         currentCar.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
 
         deathTimer = 0.0;
+        previousPosition = currentCar.transform.position;
+        carDistance = 0.0;
 
-        Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + "Id: " + 
-            generation[generationMemberIndex].id + " " + 
-            generation[generationMemberIndex].parent1Id + " " + 
+        Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + " Id: " +
+            generation[generationMemberIndex].id + " " +
+            generation[generationMemberIndex].parent1Id + " " +
             generation[generationMemberIndex].parent2Id);
 
     }
