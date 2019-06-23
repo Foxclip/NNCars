@@ -122,7 +122,9 @@ public class NeuralNetwork
     private int hiddenLayers;
     private int neuronsInLayer;
     private static int networkIdCounter = 0;
-    private int id = 0;
+    public int id = 0;
+    public int parent1Id = -1;
+    public int parent2Id = -1;
     public double fitness = 0;
     public List<_Neuron> neurons = new List<_Neuron>();
     private List<InputNeuron> inputNeurons = new List<InputNeuron>();
@@ -261,6 +263,8 @@ public class NeuralNetwork
         {
             Neuron.NeuronCrossover(newNetwork.outputNeurons[i], network1.outputNeurons[i], network2.outputNeurons[i]);
         }
+        newNetwork.parent1Id = network1.id;
+        newNetwork.parent2Id = network2.id;
         return newNetwork;
     }
 
