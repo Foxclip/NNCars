@@ -11,7 +11,6 @@ public abstract class _Neuron
     protected string name;
     public double value = 0;
     private List<Neuron> outputLinks = new List<Neuron>();
-    private int groupId = 0;
     private int inputCount = 0;
 
     public _Neuron(string name)
@@ -124,10 +123,11 @@ public class NeuralNetwork
     private int neuronsInLayer;
     private static int networkIdCounter = 0;
     private int id = 0;
-    private double fitness = 0;
+    public double fitness = 0;
     public List<_Neuron> neurons = new List<_Neuron>();
     private List<InputNeuron> inputNeurons = new List<InputNeuron>();
     public List<Neuron> hiddenNeurons = new List<Neuron>();
+    public List<Neuron> outputNeurons = new List<Neuron>();
 
     public NeuralNetwork(int hiddenLayers, int neuronsInLayer)
     {
@@ -177,11 +177,16 @@ public class NeuralNetwork
             previousLayer = new List<_Neuron>(currentLayer);
         }
 
-        Neuron outputNeuron = new Neuron("o1");
-        AddHiddenNeuron(outputNeuron);
-        foreach (Neuron neuron in currentLayer)
+        Neuron output1 = new Neuron("movement");
+        Neuron output2 = new Neuron("steering");
+        AddOutputNeuron(output1);
+        AddOutputNeuron(output2);
+        foreach (Neuron hiddenNeuron in currentLayer)
         {
-            Connect(neuron, outputNeuron);
+            foreach (Neuron outputNeuron in outputNeurons)
+            {
+                Connect(hiddenNeuron, outputNeuron);
+            }
         }
 
 
@@ -204,14 +209,25 @@ public class NeuralNetwork
         neurons.Add(neuron);
     }
 
-    public double Feedforward(List<double> inputs)
+    private void AddOutputNeuron(Neuron neuron)
+    {
+        outputNeurons.Add(neuron);
+        neurons.Add(neuron);
+    }
+
+    public List<double> Feedforward(List<double> inputs)
     {
         SetInputs(inputs);
         foreach (_Neuron neuron in neurons)
         {
             neuron.Feedforward();
         }
-        return neurons[neurons.Count - 1].value;
+        List<double> output = new List<double>();
+        foreach (Neuron neuron in outputNeurons)
+        {
+            output.Add(neuron.value);
+        }
+        return output;
     }
 
     private void SetInputs(List<double> inputs)
@@ -228,6 +244,10 @@ public class NeuralNetwork
         {
             neuron.Mutate(power, maxMutation);
         }
+        foreach (Neuron neuron in outputNeurons)
+        {
+            neuron.Mutate(power, maxMutation);
+        }
     }
 
     public static NeuralNetwork Crossover(NeuralNetwork network1, NeuralNetwork network2)
@@ -236,6 +256,10 @@ public class NeuralNetwork
         for (int i = 0; i < network1.hiddenNeurons.Count; i++)
         {
             Neuron.NeuronCrossover(newNetwork.hiddenNeurons[i], network1.hiddenNeurons[i], network2.hiddenNeurons[i]);
+        }
+        for (int i = 0; i < network1.outputNeurons.Count; i++)
+        {
+            Neuron.NeuronCrossover(newNetwork.outputNeurons[i], network1.outputNeurons[i], network2.outputNeurons[i]);
         }
         return newNetwork;
     }
@@ -285,17 +309,17 @@ class Program
     {
 
         NeuralNetwork network1 = new NeuralNetwork(2, 2);
-        //network1.hiddenNeurons[0].weights[0] = 1;
-        //network1.hiddenNeurons[2].weights[0] = 1;
-        //network1.hiddenNeurons[4].weights[0] = 1;
+        network1.hiddenNeurons[0].weights[0] = 1;
+        network1.hiddenNeurons[2].weights[0] = 1;
+        network1.outputNeurons[0].weights[0] = 1;
         network1.Feedforward(new List<double> { 2, 3 });
         Console.WriteLine(network1);
         Console.WriteLine();
 
         NeuralNetwork network2 = new NeuralNetwork(2, 2);
-        //network2.hiddenNeurons[0].weights[0] = 2;
-        //network2.hiddenNeurons[2].weights[0] = 2;
-        //network2.hiddenNeurons[4].weights[0] = 2;
+        network2.hiddenNeurons[0].weights[0] = 2;
+        network2.hiddenNeurons[2].weights[0] = 2;
+        network2.outputNeurons[0].weights[0] = 2;
         network2.Feedforward(new List<double> { 2, 3 });
         Console.WriteLine(network2);
         Console.WriteLine();
