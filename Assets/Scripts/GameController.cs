@@ -6,28 +6,33 @@ using System;
 public class GameController : MonoBehaviour
 {
 
+    public int layerCount = 1;
+    public int neuronsInLayer = 16;
     public int populationSize = 10;
     public float crossoverPower = 2;
     public float mutationPower = 10;
     public float maxMutation = 1;
     public float speedupTimeScale = 10;
+    public float checkpointReachDistance = 3.0f;
 
     public GameObject carPrefab;
     public GameObject carSpawnPoint;
-    public GameObject finish;
+    public Transform[] checkpoints;
     public double terminationDelay = 1.0;
-    public double terminationSpeed = 0.1;
+    public double terminationSpeed = 0.2;
 
     [HideInInspector]    
     public List<NeuralNetwork> generation = new List<NeuralNetwork>();
 
     private GameObject currentCar;
     private NeuralNetwork bestNetwork;
-    private double deathTimer = 0.0;
+    private double bestFitnessInThisRun = 0.0;
+    private double fitnessDeathTimer = 0.0;
+    private double speedDeathTimer = 0.0;
     private int generationIndex = 0;
     private int generationMemberIndex = -1;
-    private Vector3 previousPosition;
-    private double carDistance = 0.0;
+    private int nextCheckpoint = 0;
+    private double totalBestFitness = 0.0;
 
     private bool fastForward = false;
 
@@ -38,7 +43,7 @@ public class GameController : MonoBehaviour
 
         for (int i = 0; i < populationSize; i++)
         {
-            NeuralNetwork newNetwork = new NeuralNetwork(1, 2);
+            NeuralNetwork newNetwork = new NeuralNetwork(layerCount, neuronsInLayer);
             newNetwork.Mutate(10, 1);
             generation.Add(newNetwork);
         }
@@ -67,37 +72,84 @@ public class GameController : MonoBehaviour
     {
 
         double currentCarVelocity = currentCar.GetComponent<Rigidbody>().velocity.magnitude;
+        double currentFitness = generation[generationMemberIndex].fitness;
 
-        if(deathTimer > terminationDelay || currentCar.transform.position.y < 0.0f)
+        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || currentCar.transform.position.y < 0.0f)
         {
+            //if(fitnessDeathTimer > terminationDelay)
+            //{
+            //    Debug.Log("FITNESS Max: " + bestFitnessInThisRun + " Current: " + currentFitness);
+            //}
+            //if (speedDeathTimer > terminationDelay)
+            //{
+            //    Debug.Log("SPEED");
+            //}
             NextCar();
+            return;
         }
-        if(currentCarVelocity < terminationSpeed)
+
+        if(currentFitness <= bestFitnessInThisRun)
         {
-            deathTimer += Time.deltaTime;
+            fitnessDeathTimer += Time.deltaTime;
         } else
         {
-            deathTimer = 0.0;
+            fitnessDeathTimer = 0.0;
+            bestFitnessInThisRun = currentFitness;
+            //Debug.Log("SET TO " + bestFitnessInThisRun);
         }
 
-        carDistance += Vector3.Distance(currentCar.transform.position, previousPosition);
-        previousPosition = currentCar.transform.position;
-        generation[generationMemberIndex].fitness = carDistance;
+        //Debug.Log(bestFitnessInThisRun);
+
+        if (currentCarVelocity < terminationSpeed)
+        {
+            speedDeathTimer += Time.deltaTime;
+        }
+        else
+        {
+            speedDeathTimer = 0.0;
+        }
+
+        double fitness = 0.0;
+        if (nextCheckpoint < checkpoints.Length)
+        {
+            if (Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position) < checkpointReachDistance)
+            {
+                nextCheckpoint++;
+            }
+            if (nextCheckpoint < checkpoints.Length)
+            {
+                float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
+                fitness = nextCheckpoint * 10.0 + 1.0 / (distanceToNextCheckpoint + 1);
+            } else
+            {
+                fitness = 1000.0;
+            }
+        }
+        else
+        {
+            fitness = 1000.0;
+        }
+        if(fitness > totalBestFitness)
+        {
+            totalBestFitness = fitness;
+        }
+        //Debug.Log(fitness);
+        generation[generationMemberIndex].fitness = fitness;
 
     }
 
     void NextCar()
     {
 
-        if (generationMemberIndex != -1)
-        {
-            Debug.Log("Fitness: " + generation[generationMemberIndex].fitness);
-        }
+        //if (generationMemberIndex != -1)
+        //{
+        //    Debug.Log("Fitness: " + generation[generationMemberIndex].fitness);
+        //}
 
-        if (generationMemberIndex == 0) {
-            Debug.Log("generation[0]");
-            Debug.Log(generation[0]);
-        }
+        //if (generationMemberIndex == 0) {
+        //    Debug.Log("generation[0]");
+        //    Debug.Log(generation[0]);
+        //}
 
         generationMemberIndex++;
 
@@ -114,8 +166,8 @@ public class GameController : MonoBehaviour
                     if (generation[0].fitness > bestNetwork.fitness)
                     {
                         bestNetwork = generation[0];
-                        Debug.Log("NEW BEST Id: " + bestNetwork.id + " Fitness: " + bestNetwork.fitness);
-                        Debug.Log(bestNetwork);
+                        //Debug.Log("NEW BEST Id: " + bestNetwork.id + " Fitness: " + bestNetwork.fitness);
+                        //Debug.Log(bestNetwork);
                     }
                     newGeneration.Add(NeuralNetwork.Crossover(bestNetwork, bestNetwork));
                     continue;
@@ -147,14 +199,19 @@ public class GameController : MonoBehaviour
         currentCar.transform.rotation = carSpawnPoint.transform.rotation;
         currentCar.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
 
-        deathTimer = 0.0;
-        previousPosition = currentCar.transform.position;
-        carDistance = 0.0;
+        fitnessDeathTimer = 0.0;
+        speedDeathTimer = 0.0;
+        bestFitnessInThisRun = 0.0;
+        //Debug.Log("BEST " + bestFitnessInThisRun);
+        nextCheckpoint = 0;
+        //carDistance = 0.0;
 
-        Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + " Id: " +
-            generation[generationMemberIndex].id + " " +
-            generation[generationMemberIndex].parent1Id + " " +
-            generation[generationMemberIndex].parent2Id);
+        Debug.Log("Generation " + (generationIndex + 1) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness);
+
+        //Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + " Id: " +
+        //    generation[generationMemberIndex].id + " " +
+        //    generation[generationMemberIndex].parent1Id + " " +
+        //    generation[generationMemberIndex].parent2Id);
 
     }
 

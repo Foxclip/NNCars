@@ -7,6 +7,7 @@ public class CarController : MonoBehaviour
     public List<AxleInfo> axleInfos; // the information about each individual axle
     public float maxMotorTorque = 1000.0f; // maximum torque the motor can apply to wheel
     public float maxSteeringAngle = 45.0f; // maximum steer angle the wheel can have
+    public GameObject carSpawnPoint;
 
     [HideInInspector]
     public NeuralNetwork neuralNetwork;
@@ -18,12 +19,19 @@ public class CarController : MonoBehaviour
     public void FixedUpdate()
     {
 
-        List<double> neuralNetworkOutput = neuralNetwork.Feedforward(new List<double> { 2, 3 });
+        double x = transform.position.x - carSpawnPoint.transform.position.x;
+        double z = transform.position.z - carSpawnPoint.transform.position.z;
+        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(new List<double> { x, z });
         float motor = maxMotorTorque * (float)neuralNetworkOutput[0];
+        //if(motor < 0.0f)
+        //{
+        //    motor = 0.0f;
+        //}
         float steering = maxSteeringAngle * (float)neuralNetworkOutput[1];
+        //Debug.Log("Motor: " + motor + " Steering: " + steering);
 
-        //float motor = maxMotorTorque * Input.GetAxis("Vertical");
-        //float steering = maxSteeringAngle * Input.GetAxis("Horizontal");
+        //motor = maxMotorTorque * Input.GetAxis("Vertical");
+        //steering = maxSteeringAngle * Input.GetAxis("Horizontal");
 
         foreach (AxleInfo axleInfo in axleInfos)
         {
