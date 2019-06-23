@@ -8,8 +8,20 @@ public class CarController : MonoBehaviour
     public float maxMotorTorque = 1000.0f; // maximum torque the motor can apply to wheel
     public float maxSteeringAngle = 45.0f; // maximum steer angle the wheel can have
 
+    private NeuralNetwork neuralNetwork;
+
+    public void Start()
+    {
+        neuralNetwork = new NeuralNetwork(1, 2);
+        neuralNetwork.hiddenNeurons[0].weights[0] = 1;
+        neuralNetwork.hiddenNeurons[2].weights[0] = 1;
+    }
+
     public void FixedUpdate()
     {
+
+        //float motor = maxMotorTorque * (float)neuralNetwork.Feedforward(new List<double> { 2, 3 });
+
         float motor = maxMotorTorque * Input.GetAxis("Vertical");
         float steering = maxSteeringAngle * Input.GetAxis("Horizontal");
 
