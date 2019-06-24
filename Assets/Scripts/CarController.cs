@@ -9,34 +9,40 @@ public class CarController : MonoBehaviour
     public float maxSteeringAngle = 45.0f; // maximum steer angle the wheel can have
     public GameObject carSpawnPoint;
     public Transform[] rayOrigins;
+    public GameObject gameControllerObject;
 
     [HideInInspector]
     public NeuralNetwork neuralNetwork;
 
+    private GameController gameController;
+
     public void Start()
     {
         Physics.queriesHitBackfaces = true;
+        gameController = gameControllerObject.GetComponent<GameController>();
     }
 
     public void FixedUpdate()
     {
 
-        List<double> hitDistances = new List<double>();
+        List<double> NNInputs = new List<double>();
 
         foreach(Transform rayOrigin in rayOrigins)
         {
             RaycastHit hit;
             if(Physics.Raycast(rayOrigin.position, rayOrigin.forward, out hit))
             {
-                hitDistances.Add(hit.distance);
+                NNInputs.Add(hit.distance);
                 Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
             } else
             {
-                hitDistances.Add(0.0);
+                NNInputs.Add(-1.0);
             }
         }
 
-        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(hitDistances);
+        NNInputs.Add(gameController.nextCheckpoint);
+
+        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(NNInputs);
         float motor = maxMotorTorque * (float)neuralNetworkOutput[0];
         //if(motor < 0.0f)
         //{
@@ -82,6 +88,11 @@ public class CarController : MonoBehaviour
 
         visualWheel.transform.position = position;
         visualWheel.transform.rotation = rotation * Quaternion.Euler(0.0f, 0.0f, 90.0f);
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        gameController.collisionDetected = true;
     }
 
 }

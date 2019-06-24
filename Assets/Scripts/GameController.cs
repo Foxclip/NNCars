@@ -23,6 +23,8 @@ public class GameController : MonoBehaviour
 
     [HideInInspector]    
     public List<NeuralNetwork> generation = new List<NeuralNetwork>();
+    public bool collisionDetected = false;
+    public int nextCheckpoint = 0;
 
     private GameObject currentCar;
     private NeuralNetwork bestNetwork;
@@ -31,7 +33,6 @@ public class GameController : MonoBehaviour
     private double speedDeathTimer = 0.0;
     private int generationIndex = 0;
     private int generationMemberIndex = -1;
-    private int nextCheckpoint = 0;
     private double totalBestFitness = 0.0;
     private int breakthroughGen = 0;
 
@@ -75,7 +76,7 @@ public class GameController : MonoBehaviour
         double currentCarVelocity = currentCar.GetComponent<Rigidbody>().velocity.magnitude;
         double currentFitness = generation[generationMemberIndex].fitness;
 
-        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || currentCar.transform.position.y < 0.0f)
+        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || currentCar.transform.position.y < 0.0f || collisionDetected)
         {
             //if(fitnessDeathTimer > terminationDelay)
             //{
@@ -207,6 +208,7 @@ public class GameController : MonoBehaviour
         //Debug.Log("BEST " + bestFitnessInThisRun);
         nextCheckpoint = 0;
         //carDistance = 0.0;
+        collisionDetected = false;
 
         Debug.Log("Generation " + (generationIndex + 1) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + breakthroughGen);
 

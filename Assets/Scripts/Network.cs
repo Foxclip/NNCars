@@ -143,9 +143,11 @@ public class NeuralNetwork
         InputNeuron input1 = new InputNeuron("left");
         InputNeuron input2 = new InputNeuron("center");
         InputNeuron input3 = new InputNeuron("right");
+        InputNeuron input4 = new InputNeuron("nextCheckpoint");
         AddInputNeuron(input1);
         AddInputNeuron(input2);
         AddInputNeuron(input3);
+        AddInputNeuron(input4);
 
         List<_Neuron> previousLayer = new List<_Neuron>();
         List<_Neuron> currentLayer = new List<_Neuron>();
