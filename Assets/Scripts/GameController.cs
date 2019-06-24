@@ -6,6 +6,8 @@ using System;
 public class GameController : MonoBehaviour
 {
 
+    private const int INPUT_COUNT = 5;
+
     public int layerCount = 1;
     public int neuronsInLayer = 16;
     public int populationSize = 10;
@@ -21,9 +23,11 @@ public class GameController : MonoBehaviour
     public double terminationDelay = 1.0;
     public double terminationSpeed = 0.2;
 
-    [HideInInspector]    
+    [HideInInspector]
     public List<NeuralNetwork> generation = new List<NeuralNetwork>();
+    [HideInInspector]
     public bool collisionDetected = false;
+    [HideInInspector]
     public int nextCheckpoint = 0;
 
     private GameObject currentCar;
@@ -45,7 +49,7 @@ public class GameController : MonoBehaviour
 
         for (int i = 0; i < populationSize; i++)
         {
-            NeuralNetwork newNetwork = new NeuralNetwork(layerCount, neuronsInLayer);
+            NeuralNetwork newNetwork = new NeuralNetwork(INPUT_COUNT, layerCount, neuronsInLayer);
             newNetwork.Mutate(10, 1);
             generation.Add(newNetwork);
         }

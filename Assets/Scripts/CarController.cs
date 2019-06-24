@@ -15,11 +15,13 @@ public class CarController : MonoBehaviour
     public NeuralNetwork neuralNetwork;
 
     private GameController gameController;
+    private Rigidbody rb;
 
     public void Start()
     {
         Physics.queriesHitBackfaces = true;
         gameController = gameControllerObject.GetComponent<GameController>();
+        rb = GetComponent<Rigidbody>();
     }
 
     public void FixedUpdate()
@@ -41,6 +43,7 @@ public class CarController : MonoBehaviour
         }
 
         NNInputs.Add(gameController.nextCheckpoint);
+        NNInputs.Add(rb.velocity.magnitude);
 
         List <double> neuralNetworkOutput = neuralNetwork.Feedforward(NNInputs);
         float motor = maxMotorTorque * (float)neuralNetworkOutput[0];

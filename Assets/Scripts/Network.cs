@@ -119,6 +119,7 @@ public class Neuron : _Neuron
 public class NeuralNetwork
 {
 
+    private int inputCount;
     private int hiddenLayers;
     private int neuronsInLayer;
     private static int networkIdCounter = 0;
@@ -131,23 +132,21 @@ public class NeuralNetwork
     public List<Neuron> hiddenNeurons = new List<Neuron>();
     public List<Neuron> outputNeurons = new List<Neuron>();
 
-    public NeuralNetwork(int hiddenLayers, int neuronsInLayer)
+    public NeuralNetwork(int inputCount, int hiddenLayers, int neuronsInLayer)
     {
 
+        this.inputCount = inputCount;
         this.hiddenLayers = hiddenLayers;
         this.neuronsInLayer = neuronsInLayer;
 
         id = networkIdCounter;
         networkIdCounter++;
 
-        InputNeuron input1 = new InputNeuron("left");
-        InputNeuron input2 = new InputNeuron("center");
-        InputNeuron input3 = new InputNeuron("right");
-        InputNeuron input4 = new InputNeuron("nextCheckpoint");
-        AddInputNeuron(input1);
-        AddInputNeuron(input2);
-        AddInputNeuron(input3);
-        AddInputNeuron(input4);
+        for (int i = 0; i < inputCount; i++)
+        {
+            InputNeuron newInputNeuron = new InputNeuron("i" + i);
+            AddInputNeuron(newInputNeuron);
+        }
 
         List<_Neuron> previousLayer = new List<_Neuron>();
         List<_Neuron> currentLayer = new List<_Neuron>();
@@ -258,7 +257,7 @@ public class NeuralNetwork
 
     public static NeuralNetwork Crossover(NeuralNetwork network1, NeuralNetwork network2)
     {
-        NeuralNetwork newNetwork = new NeuralNetwork(network1.hiddenLayers, network1.neuronsInLayer);
+        NeuralNetwork newNetwork = new NeuralNetwork(network1.inputCount, network1.hiddenLayers, network1.neuronsInLayer);
         for (int i = 0; i < network1.hiddenNeurons.Count; i++)
         {
             Neuron.NeuronCrossover(newNetwork.hiddenNeurons[i], network1.hiddenNeurons[i], network2.hiddenNeurons[i]);
@@ -316,7 +315,7 @@ class Program
     static void Main(string[] args)
     {
 
-        NeuralNetwork network1 = new NeuralNetwork(2, 2);
+        NeuralNetwork network1 = new NeuralNetwork(2, 2, 2);
         network1.hiddenNeurons[0].weights[0] = 1;
         network1.hiddenNeurons[2].weights[0] = 1;
         network1.outputNeurons[0].weights[0] = 1;
@@ -324,7 +323,7 @@ class Program
         Console.WriteLine(network1);
         Console.WriteLine();
 
-        NeuralNetwork network2 = new NeuralNetwork(2, 2);
+        NeuralNetwork network2 = new NeuralNetwork(2, 2, 2);
         network2.hiddenNeurons[0].weights[0] = 2;
         network2.hiddenNeurons[2].weights[0] = 2;
         network2.outputNeurons[0].weights[0] = 2;
