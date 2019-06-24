@@ -10,6 +10,7 @@ public class CarController : MonoBehaviour
     public GameObject carSpawnPoint;
     public Transform[] rayOrigins;
     public GameObject gameControllerObject;
+    public int inputSmooting = 1;
 
     [HideInInspector]
     public NeuralNetwork neuralNetwork;
@@ -26,6 +27,8 @@ public class CarController : MonoBehaviour
 
     public void FixedUpdate()
     {
+
+        rb.isKinematic = false;
 
         List<double> NNInputs = new List<double>();
 
@@ -59,6 +62,12 @@ public class CarController : MonoBehaviour
 
         foreach (AxleInfo axleInfo in axleInfos)
         {
+
+            for (int i = 0; i < inputSmooting; i++)
+            {
+                steering = (steering + axleInfo.leftWheel.steerAngle) / 2.0f;
+            }
+
             if (axleInfo.steering)
             {
                 axleInfo.leftWheel.steerAngle = steering;

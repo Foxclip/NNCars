@@ -39,6 +39,10 @@ public class GameController : MonoBehaviour
     private int generationMemberIndex = -1;
     private double totalBestFitness = 0.0;
     private int breakthroughGen = 0;
+    private int breakthroughCar = 0;
+    private double timer = 0.0;
+    private double distance = 0.0;
+    private Vector3 previousPosition;
 
     private bool fastForward = false;
 
@@ -50,10 +54,12 @@ public class GameController : MonoBehaviour
         for (int i = 0; i < populationSize; i++)
         {
             NeuralNetwork newNetwork = new NeuralNetwork(INPUT_COUNT, layerCount, neuronsInLayer);
-            newNetwork.Mutate(10, 1);
+            newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
             generation.Add(newNetwork);
         }
         bestNetwork = generation[0];
+
+        previousPosition = carSpawnPoint.transform.position;
 
         NextCar();
 
@@ -79,6 +85,11 @@ public class GameController : MonoBehaviour
 
         double currentCarVelocity = currentCar.GetComponent<Rigidbody>().velocity.magnitude;
         double currentFitness = generation[generationMemberIndex].fitness;
+        //Debug.Log(distance);
+
+        distance += Vector3.Distance(currentCar.transform.position, previousPosition);
+        previousPosition = currentCar.transform.position;
+        timer += Time.fixedDeltaTime;
 
         if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || currentCar.transform.position.y < 0.0f || collisionDetected)
         {
@@ -96,7 +107,7 @@ public class GameController : MonoBehaviour
 
         if(currentFitness <= bestFitnessInThisRun)
         {
-            fitnessDeathTimer += Time.deltaTime;
+            fitnessDeathTimer += Time.fixedDeltaTime;
         } else
         {
             fitnessDeathTimer = 0.0;
@@ -108,39 +119,34 @@ public class GameController : MonoBehaviour
 
         if (currentCarVelocity < terminationSpeed)
         {
-            speedDeathTimer += Time.deltaTime;
+            speedDeathTimer += Time.fixedDeltaTime;
         }
         else
         {
             speedDeathTimer = 0.0;
         }
 
-        double fitness = 0.0;
+        double checkpointBonus = 0.0;
+        double distanceBonus = 0.0;
         if (nextCheckpoint < checkpoints.Length)
         {
             if (Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position) < checkpointReachDistance)
             {
                 nextCheckpoint++;
             }
-            if (nextCheckpoint < checkpoints.Length)
-            {
-                float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
-                fitness = nextCheckpoint * 10.0 + 1.0 / (distanceToNextCheckpoint + 1);
-            } else
-            {
-                fitness = 1000.0;
-            }
+        }
+        if (nextCheckpoint < checkpoints.Length)
+        {
+            float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
+            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
+            checkpointBonus = nextCheckpoint * 100.0;
         }
         else
         {
-            fitness = 1000.0;
-        }
-        if(fitness > totalBestFitness)
-        {
-            totalBestFitness = fitness;
-            breakthroughGen = generationIndex;
+            checkpointBonus = 1000.0;
         }
         //Debug.Log(fitness);
+        double fitness = checkpointBonus + distanceBonus;
         generation[generationMemberIndex].fitness = fitness;
 
     }
@@ -148,10 +154,30 @@ public class GameController : MonoBehaviour
     void NextCar()
     {
 
-        //if (generationMemberIndex != -1)
-        //{
-        //    Debug.Log("Fitness: " + generation[generationMemberIndex].fitness);
-        //}
+        if (generationMemberIndex != -1)
+        {
+            double averageSpeed = distance / timer;
+            double distanceBonus = 0.0;
+            if (nextCheckpoint < checkpoints.Length)
+            {
+                float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
+                distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
+            }
+            double checkpointBonus = nextCheckpoint * 100.0;
+            double speedBonus = Math.Tanh(averageSpeed / 100.0);
+            double savedFitness = generation[generationMemberIndex].fitness;
+            generation[generationMemberIndex].fitness += speedBonus;
+            double fitness = generation[generationMemberIndex].fitness;
+            if (fitness > totalBestFitness)
+            {
+                totalBestFitness = fitness;
+                breakthroughGen = generationIndex;
+                breakthroughCar = generationMemberIndex;
+            }
+
+            Debug.Log("Fitness: " + generation[generationMemberIndex].fitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + averageSpeed);
+            Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus);
+        }
 
         //if (generationMemberIndex == 0) {
         //    Debug.Log("generation[0]");
@@ -168,27 +194,16 @@ public class GameController : MonoBehaviour
             List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
             for(int i = 0; i < populationSize; i++)
             {
-                if(i == 0)
+
+
+                if (generation[0].fitness > bestNetwork.fitness)
                 {
-                    if (generation[0].fitness > bestNetwork.fitness)
-                    {
-                        bestNetwork = generation[0];
-                        //Debug.Log("NEW BEST Id: " + bestNetwork.id + " Fitness: " + bestNetwork.fitness);
-                        //Debug.Log(bestNetwork);
-                    }
-                    newGeneration.Add(NeuralNetwork.Crossover(bestNetwork, bestNetwork));
-                    continue;
+                    bestNetwork = generation[0];
                 }
 
-                double rand1 = Math.Pow(Utils.Rand(), crossoverPower);
-                double rand2 = Math.Pow(Utils.Rand(), crossoverPower);
-                double scaledRand1 = rand1 * populationSize;
-                double scaledRand2 = rand2 * populationSize;
-                int pick1 = (int)scaledRand1;
-                int pick2 = (int)scaledRand2;
+                NeuralNetwork newNetwork = NeuralNetwork.Crossover(bestNetwork, bestNetwork);
 
-                NeuralNetwork newNetwork = NeuralNetwork.Crossover(generation[pick1], generation[pick2]);
-                newNetwork.Mutate(mutationPower, maxMutation);
+                newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
                 newGeneration.Add(newNetwork);
 
             }
@@ -210,11 +225,16 @@ public class GameController : MonoBehaviour
         speedDeathTimer = 0.0;
         bestFitnessInThisRun = 0.0;
         //Debug.Log("BEST " + bestFitnessInThisRun);
+        distance = 0.0;
+        previousPosition = carSpawnPoint.transform.position;
+        timer = 0.0;
         nextCheckpoint = 0;
         //carDistance = 0.0;
         collisionDetected = false;
+        currentCar.GetComponent<Rigidbody>().isKinematic = true;
 
-        Debug.Log("Generation " + (generationIndex + 1) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + breakthroughGen);
+        Debug.Log("Generation " + (generationIndex + 1) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + (breakthroughGen + 1) + " Car: " + breakthroughCar);
+
 
         //Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + " Id: " +
         //    generation[generationMemberIndex].id + " " +
