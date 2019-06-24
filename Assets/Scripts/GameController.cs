@@ -19,7 +19,7 @@ public class GameController : MonoBehaviour
 
     public GameObject carPrefab;
     public GameObject carSpawnPoint;
-    public Transform[] checkpoints;
+    public GameObject checkpointsParent;
     public double terminationDelay = 1.0;
     public double terminationSpeed = 0.2;
 
@@ -31,6 +31,7 @@ public class GameController : MonoBehaviour
     public int nextCheckpoint = 0;
 
     private GameObject currentCar;
+    private List<Transform> checkpoints = new List<Transform>();
     private NeuralNetwork bestNetwork;
     private double bestFitnessInThisRun = 0.0;
     private double fitnessDeathTimer = 0.0;
@@ -60,6 +61,11 @@ public class GameController : MonoBehaviour
         bestNetwork = generation[0];
 
         previousPosition = carSpawnPoint.transform.position;
+
+        foreach(Transform child in checkpointsParent.transform)
+        {
+            checkpoints.Add(child);
+        }
 
         NextCar();
 
@@ -93,14 +99,22 @@ public class GameController : MonoBehaviour
 
         if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || currentCar.transform.position.y < 0.0f || collisionDetected)
         {
-            //if(fitnessDeathTimer > terminationDelay)
-            //{
-            //    Debug.Log("FITNESS Max: " + bestFitnessInThisRun + " Current: " + currentFitness);
-            //}
-            //if (speedDeathTimer > terminationDelay)
-            //{
-            //    Debug.Log("SPEED");
-            //}
+            if (fitnessDeathTimer > terminationDelay)
+            {
+                Debug.Log("FITNESS Max: " + bestFitnessInThisRun + " Current: " + currentFitness);
+            }
+            if (speedDeathTimer > terminationDelay)
+            {
+                Debug.Log("SPEED");
+            }
+            if(currentCar.transform.position.y < 0.0f)
+            {
+                Debug.Log("FALL");
+            }
+            if (collisionDetected)
+            {
+                Debug.Log("COLLISION");
+            }
             NextCar();
             return;
         }
@@ -128,14 +142,14 @@ public class GameController : MonoBehaviour
 
         double checkpointBonus = 0.0;
         double distanceBonus = 0.0;
-        if (nextCheckpoint < checkpoints.Length)
+        if (nextCheckpoint < checkpoints.Count)
         {
             if (Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position) < checkpointReachDistance)
             {
                 nextCheckpoint++;
             }
         }
-        if (nextCheckpoint < checkpoints.Length)
+        if (nextCheckpoint < checkpoints.Count)
         {
             float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
             distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
@@ -158,7 +172,7 @@ public class GameController : MonoBehaviour
         {
             double averageSpeed = distance / timer;
             double distanceBonus = 0.0;
-            if (nextCheckpoint < checkpoints.Length)
+            if (nextCheckpoint < checkpoints.Count)
             {
                 float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
                 distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;

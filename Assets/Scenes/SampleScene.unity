@@ -344,11 +344,7 @@ MonoBehaviour:
   carPrefab: {fileID: 5134176667151529530, guid: ed225f366ade76c4ea538e83073a1d8c,
     type: 3}
   carSpawnPoint: {fileID: 1132167140}
-  checkpoints:
-  - {fileID: 1779663720}
-  - {fileID: 390421024}
-  - {fileID: 1399635141}
-  - {fileID: 509258999}
+  checkpointsParent: {fileID: 1019728880}
   terminationDelay: 1
   terminationSpeed: 0.5
   collisionDetected: 0
@@ -1082,12 +1078,12 @@ GameObject:
   - component: {fileID: 433767563}
   - component: {fileID: 433767562}
   m_Layer: 0
-  m_Name: Plane
+  m_Name: Original Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &433767562
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1385,12 +1381,12 @@ GameObject:
   m_Component:
   - component: {fileID: 520569046}
   m_Layer: 0
-  m_Name: Walls
+  m_Name: Original Walls
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &520569046
 Transform:
   m_ObjectHideFlags: 0
@@ -3322,12 +3318,12 @@ GameObject:
   m_Component:
   - component: {fileID: 1019728881}
   m_Layer: 0
-  m_Name: Checkpoints (1)
+  m_Name: Track Checkpoints
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1019728881
 Transform:
   m_ObjectHideFlags: 0
@@ -3786,12 +3782,12 @@ GameObject:
   m_Component:
   - component: {fileID: 1189083235}
   m_Layer: 0
-  m_Name: Checkpoints
+  m_Name: Original Checkpoints
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1189083235
 Transform:
   m_ObjectHideFlags: 0
@@ -4445,12 +4441,12 @@ GameObject:
   - component: {fileID: 1447560369}
   - component: {fileID: 1447560368}
   m_Layer: 0
-  m_Name: Plane (1)
+  m_Name: Track Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &1447560368
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -5091,7 +5087,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1609450804
 Transform:
   m_ObjectHideFlags: 0
