@@ -8,20 +8,35 @@ public class CarController : MonoBehaviour
     public float maxMotorTorque = 1000.0f; // maximum torque the motor can apply to wheel
     public float maxSteeringAngle = 45.0f; // maximum steer angle the wheel can have
     public GameObject carSpawnPoint;
+    public Transform[] rayOrigins;
 
     [HideInInspector]
     public NeuralNetwork neuralNetwork;
 
     public void Start()
     {
+        Physics.queriesHitBackfaces = true;
     }
 
     public void FixedUpdate()
     {
 
-        double x = transform.position.x - carSpawnPoint.transform.position.x;
-        double z = transform.position.z - carSpawnPoint.transform.position.z;
-        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(new List<double> { x, z });
+        List<double> hitDistances = new List<double>();
+
+        foreach(Transform rayOrigin in rayOrigins)
+        {
+            RaycastHit hit;
+            if(Physics.Raycast(rayOrigin.position, rayOrigin.forward, out hit))
+            {
+                hitDistances.Add(hit.distance);
+                Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
+            } else
+            {
+                hitDistances.Add(0.0);
+            }
+        }
+
+        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(hitDistances);
         float motor = maxMotorTorque * (float)neuralNetworkOutput[0];
         //if(motor < 0.0f)
         //{

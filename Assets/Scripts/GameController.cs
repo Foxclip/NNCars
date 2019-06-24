@@ -33,6 +33,7 @@ public class GameController : MonoBehaviour
     private int generationMemberIndex = -1;
     private int nextCheckpoint = 0;
     private double totalBestFitness = 0.0;
+    private int breakthroughGen = 0;
 
     private bool fastForward = false;
 
@@ -132,6 +133,7 @@ public class GameController : MonoBehaviour
         if(fitness > totalBestFitness)
         {
             totalBestFitness = fitness;
+            breakthroughGen = generationIndex;
         }
         //Debug.Log(fitness);
         generation[generationMemberIndex].fitness = fitness;
@@ -198,7 +200,7 @@ public class GameController : MonoBehaviour
         currentCar.transform.position = carSpawnPoint.transform.position;
         currentCar.transform.rotation = carSpawnPoint.transform.rotation;
         currentCar.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
-
+        currentCar.GetComponent<Rigidbody>().angularVelocity = new Vector3(0.0f, 0.0f, 0.0f);
         fitnessDeathTimer = 0.0;
         speedDeathTimer = 0.0;
         bestFitnessInThisRun = 0.0;
@@ -206,7 +208,7 @@ public class GameController : MonoBehaviour
         nextCheckpoint = 0;
         //carDistance = 0.0;
 
-        Debug.Log("Generation " + (generationIndex + 1) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness);
+        Debug.Log("Generation " + (generationIndex + 1) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + breakthroughGen);
 
         //Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + " Id: " +
         //    generation[generationMemberIndex].id + " " +
