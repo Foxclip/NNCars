@@ -6,7 +6,7 @@ using System;
 public class GameController : MonoBehaviour
 {
 
-    private const int INPUT_COUNT = 5;
+    private const int INPUT_COUNT = 4;
 
     public int layerCount = 1;
     public int neuronsInLayer = 16;
@@ -140,7 +140,6 @@ public class GameController : MonoBehaviour
             speedDeathTimer = 0.0;
         }
 
-        double checkpointBonus = 0.0;
         double distanceBonus = 0.0;
         if (nextCheckpoint < checkpoints.Count)
         {
@@ -153,12 +152,8 @@ public class GameController : MonoBehaviour
         {
             float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
             distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
-            checkpointBonus = nextCheckpoint * 100.0;
         }
-        else
-        {
-            checkpointBonus = 1000.0;
-        }
+        double checkpointBonus = nextCheckpoint * 100.0;
         //Debug.Log(fitness);
         double fitness = checkpointBonus + distanceBonus;
         generation[generationMemberIndex].fitness = fitness;

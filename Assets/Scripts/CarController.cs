@@ -45,7 +45,7 @@ public class CarController : MonoBehaviour
             }
         }
 
-        NNInputs.Add(gameController.nextCheckpoint);
+        //NNInputs.Add(gameController.nextCheckpoint);
         NNInputs.Add(rb.velocity.magnitude);
 
         List <double> neuralNetworkOutput = neuralNetwork.Feedforward(NNInputs);
