@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using UnityEngine.UI;
 
 public class GameController : MonoBehaviour
 {
@@ -22,6 +23,12 @@ public class GameController : MonoBehaviour
     public GameObject checkpointsParent;
     public double terminationDelay = 1.0;
     public double terminationSpeed = 0.2;
+
+    public Text generationText;
+    public Text carText;
+    public Text currentFitnessText;
+    public Text maxFitnessText;
+    public Text timeText;
 
     [HideInInspector]
     public List<NeuralNetwork> generation = new List<NeuralNetwork>();
@@ -157,6 +164,12 @@ public class GameController : MonoBehaviour
         //Debug.Log(fitness);
         double fitness = checkpointBonus + distanceBonus;
         generation[generationMemberIndex].fitness = fitness;
+
+        generationText.text = "GENERATION: " + generationIndex;
+        carText.text = "CAR: " + generationMemberIndex;
+        currentFitnessText.text = "FITNESS: " + fitness;
+        maxFitnessText.text = "MAX FITNESS: " + totalBestFitness;
+        timeText.text = "TIME: " + timer;
 
     }
 
