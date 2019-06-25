@@ -6,7 +6,7 @@ using System;
 public class GameController : MonoBehaviour
 {
 
-    private const int INPUT_COUNT = 5;
+    private const int INPUT_COUNT = 11;
 
     public int layerCount = 1;
     public int neuronsInLayer = 16;
