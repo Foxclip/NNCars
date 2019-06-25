@@ -173,9 +173,21 @@ public class GameController : MonoBehaviour
                 distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
             }
             double checkpointBonus = nextCheckpoint * 100.0;
-            double speedBonus = Math.Tanh(averageSpeed / 100.0);
+            double speedBonus = 0.0;
+            double timeBonus = 0.0;
+            if (nextCheckpoint < checkpoints.Count)
+            {
+                speedBonus = Math.Tanh(averageSpeed / 100.0);
+                timeBonus = 0.0;
+            }
+            else
+            {
+                speedBonus = 0.0;
+                timeBonus = 1.0 / (timer + 1.0);
+            }
             double savedFitness = generation[generationMemberIndex].fitness;
             generation[generationMemberIndex].fitness += speedBonus;
+            generation[generationMemberIndex].fitness += timeBonus;
             double fitness = generation[generationMemberIndex].fitness;
             if (fitness > totalBestFitness)
             {
@@ -185,7 +197,7 @@ public class GameController : MonoBehaviour
             }
 
             Debug.Log("Fitness: " + generation[generationMemberIndex].fitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + averageSpeed);
-            Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus);
+            Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
         }
 
         //if (generationMemberIndex == 0) {
