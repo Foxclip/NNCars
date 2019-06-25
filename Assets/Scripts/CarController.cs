@@ -48,6 +48,27 @@ public class CarController : MonoBehaviour
         //NNInputs.Add(gameController.nextCheckpoint);
         NNInputs.Add(rb.velocity.magnitude);
 
+        //double carAngle = Mathf.Rad2Deg * (Mathf.Atan2(transform.forward.x, transform.forward.z));
+        //double velocityAngle = Mathf.Rad2Deg * (Mathf.Atan2(rb.velocity.x, rb.velocity.z));
+        //double angleOfAttack = (carAngle - velocityAngle) % 360;
+        //Debug.Log("CarA: " + carAngle + "VelA: " + velocityAngle + " AoA: " + angleOfAttack);
+
+        double totalSlip = 0.0;
+        foreach (AxleInfo axleInfo in axleInfos)
+        {
+            WheelHit hit;
+            axleInfo.leftWheel.GetGroundHit(out hit);
+            totalSlip += hit.sidewaysSlip;
+            axleInfo.rightWheel.GetGroundHit(out hit);
+            totalSlip += hit.sidewaysSlip;
+        }
+        //Debug.Log(totalSlip);
+        NNInputs.Add(totalSlip);
+
+        if(neuralNetwork.inputCount != NNInputs.Count)
+        {
+            throw new System.Exception("Input lists do not match: NN(" + neuralNetwork.inputCount + ") Inputs(" + NNInputs.Count + ")");
+        }
         List <double> neuralNetworkOutput = neuralNetwork.Feedforward(NNInputs);
         float motor = maxMotorTorque * (float)neuralNetworkOutput[0];
         //if(motor < 0.0f)

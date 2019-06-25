@@ -119,7 +119,7 @@ public class Neuron : _Neuron
 public class NeuralNetwork
 {
 
-    private int inputCount;
+    public int inputCount;
     private int hiddenLayers;
     private int neuronsInLayer;
     private static int networkIdCounter = 0;

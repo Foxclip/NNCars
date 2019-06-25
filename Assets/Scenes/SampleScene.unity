@@ -364,7 +364,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   layerCount: 1
-  neuronsInLayer: 5
+  neuronsInLayer: 32
   populationSize: 10
   crossoverPower: 2
   mutationPower: 3
