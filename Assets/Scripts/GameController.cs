@@ -28,6 +28,8 @@ public class GameController : MonoBehaviour
     public Text carText;
     public Text currentFitnessText;
     public Text maxFitnessText;
+    public Text bestCarText;
+    public Text minTimeText;
     public Text timeText;
 
     [HideInInspector]
@@ -50,6 +52,7 @@ public class GameController : MonoBehaviour
     private int breakthroughCar = 0;
     private double timer = 0.0;
     private double distance = 0.0;
+    private double minTime = -1.0;
     private Vector3 previousPosition;
 
     private bool fastForward = false;
@@ -169,6 +172,8 @@ public class GameController : MonoBehaviour
         carText.text = "CAR: " + generationMemberIndex;
         currentFitnessText.text = "FITNESS: " + fitness;
         maxFitnessText.text = "MAX FITNESS: " + totalBestFitness;
+        bestCarText.text = "BEST: GEN " + breakthroughGen + " CAR " + breakthroughCar;
+        minTimeText.text = "MIN TIME: " + minTime;
         timeText.text = "TIME: " + timer;
 
     }
@@ -207,6 +212,14 @@ public class GameController : MonoBehaviour
                 totalBestFitness = fitness;
                 breakthroughGen = generationIndex;
                 breakthroughCar = generationMemberIndex;
+            }
+
+            if(nextCheckpoint >= checkpoints.Count)
+            {
+                if(timer < minTime || minTime < 0)
+                {
+                    minTime = timer;
+                }
             }
 
             Debug.Log("Fitness: " + generation[generationMemberIndex].fitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + averageSpeed);
@@ -267,7 +280,7 @@ public class GameController : MonoBehaviour
         collisionDetected = false;
         currentCar.GetComponent<Rigidbody>().isKinematic = true;
 
-        Debug.Log("Generation " + (generationIndex + 1) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + (breakthroughGen + 1) + " Car: " + breakthroughCar);
+        Debug.Log("Generation " + (generationIndex) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + (breakthroughGen) + " Car: " + breakthroughCar);
 
 
         //Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + " Id: " +
