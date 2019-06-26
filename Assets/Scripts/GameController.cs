@@ -18,7 +18,7 @@ public class GameController : MonoBehaviour
     public float speedupTimeScale = 10;
     public float checkpointReachDistance = 3.0f;
 
-    public GameObject carPrefab;
+    public GameObject carObject;
     public GameObject carSpawnPoint;
     public GameObject checkpointsParent;
     public double terminationDelay = 1.0;
@@ -39,7 +39,6 @@ public class GameController : MonoBehaviour
     [HideInInspector]
     public int nextCheckpoint = 0;
 
-    private GameObject currentCar;
     private List<Transform> checkpoints = new List<Transform>();
     private NeuralNetwork bestNetwork;
     private double bestFitnessInThisRun = 0.0;
@@ -60,8 +59,7 @@ public class GameController : MonoBehaviour
     void Start()
     {
 
-        currentCar = GameObject.Find("Car");
-
+        //creating initial population
         for (int i = 0; i < populationSize; i++)
         {
             NeuralNetwork newNetwork = new NeuralNetwork(INPUT_COUNT, layerCount, neuronsInLayer);
@@ -72,7 +70,8 @@ public class GameController : MonoBehaviour
 
         previousPosition = carSpawnPoint.transform.position;
 
-        foreach(Transform child in checkpointsParent.transform)
+        //loading checkpoints
+        foreach (Transform child in checkpointsParent.transform)
         {
             checkpoints.Add(child);
         }
@@ -83,9 +82,9 @@ public class GameController : MonoBehaviour
 
     void Update()
     {
-        if(Input.GetKeyDown("space"))
+        if (Input.GetKeyDown("space"))
         {
-            if(fastForward)
+            if (fastForward)
             {
                 Time.timeScale = 1.0f;
             } else
@@ -99,25 +98,34 @@ public class GameController : MonoBehaviour
     void FixedUpdate()
     {
 
-        double currentCarVelocity = currentCar.GetComponent<Rigidbody>().velocity.magnitude;
-        double currentFitness = generation[generationMemberIndex].fitness;
-        //Debug.Log(distance);
-
-        distance += Vector3.Distance(currentCar.transform.position, previousPosition);
-        previousPosition = currentCar.transform.position;
+        distance += Vector3.Distance(carObject.transform.position, previousPosition);
+        previousPosition = carObject.transform.position;
         timer += Time.fixedDeltaTime;
 
-        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || currentCar.transform.position.y < 0.0f || collisionDetected)
+        CheckDeathConditions();
+
+        UpdateDeathTimers();
+
+        AddBonuses();
+
+        UpdateUIText();
+
+    }
+
+    void CheckDeathConditions()
+    {
+        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || carObject.transform.position.y < 0.0f || collisionDetected)
         {
             if (fitnessDeathTimer > terminationDelay)
             {
+                double currentFitness = generation[generationMemberIndex].fitness;
                 Debug.Log("FITNESS Max: " + bestFitnessInThisRun + " Current: " + currentFitness);
             }
             if (speedDeathTimer > terminationDelay)
             {
                 Debug.Log("SPEED");
             }
-            if(currentCar.transform.position.y < 0.0f)
+            if (carObject.transform.position.y < 0.0f)
             {
                 Debug.Log("FALL");
             }
@@ -128,19 +136,25 @@ public class GameController : MonoBehaviour
             NextCar();
             return;
         }
+    }
 
-        if(currentFitness <= bestFitnessInThisRun)
+    void UpdateDeathTimers()
+    {
+
+        //fitness timer
+        double currentFitness = generation[generationMemberIndex].fitness;
+        if (currentFitness <= bestFitnessInThisRun)
         {
             fitnessDeathTimer += Time.fixedDeltaTime;
-        } else
+        }
+        else
         {
             fitnessDeathTimer = 0.0;
             bestFitnessInThisRun = currentFitness;
-            //Debug.Log("SET TO " + bestFitnessInThisRun);
         }
 
-        //Debug.Log(bestFitnessInThisRun);
-
+        //speed timer
+        double currentCarVelocity = carObject.GetComponent<Rigidbody>().velocity.magnitude;
         if (currentCarVelocity < terminationSpeed)
         {
             speedDeathTimer += Time.fixedDeltaTime;
@@ -150,31 +164,149 @@ public class GameController : MonoBehaviour
             speedDeathTimer = 0.0;
         }
 
-        double distanceBonus = 0.0;
+    }
+
+    void AddBonuses()
+    {
+
+        //has to update next checkpoint first
         if (nextCheckpoint < checkpoints.Count)
         {
-            if (Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position) < checkpointReachDistance)
+            if (Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position) < checkpointReachDistance)
             {
                 nextCheckpoint++;
             }
         }
+
+        //distance bonus
+        double distanceBonus = 0.0;
         if (nextCheckpoint < checkpoints.Count)
         {
-            float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
+            float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
             distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
         }
-        double checkpointBonus = nextCheckpoint * 100.0;
-        //Debug.Log(fitness);
-        double fitness = checkpointBonus + distanceBonus;
-        generation[generationMemberIndex].fitness = fitness;
 
+        //checkpoint bonus
+        double checkpointBonus = nextCheckpoint * 100.0;
+
+        generation[generationMemberIndex].fitness = checkpointBonus + distanceBonus;
+    }
+
+    void UpdateUIText()
+    {
         generationText.text = "GENERATION: " + generationIndex;
         carText.text = "CAR: " + generationMemberIndex;
-        currentFitnessText.text = "FITNESS: " + fitness;
+        currentFitnessText.text = "FITNESS: " + generation[generationMemberIndex].fitness;
         maxFitnessText.text = "MAX FITNESS: " + totalBestFitness;
         bestCarText.text = "BEST: GEN " + breakthroughGen + " CAR " + breakthroughCar;
         minTimeText.text = "MIN TIME: " + minTime;
         timeText.text = "TIME: " + timer;
+    }
+
+    void PostRun()
+    {
+
+        //distance bonus
+        double distanceBonus = 0.0;
+        if (nextCheckpoint < checkpoints.Count)
+        {
+            float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
+            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
+        }
+
+        //checkpoint bonus
+        double checkpointBonus = nextCheckpoint * 100.0;
+
+        //speed and time bonuses
+        double speedBonus = 0.0;
+        double timeBonus = 0.0;
+        if (nextCheckpoint < checkpoints.Count)
+        {
+            double averageSpeed = distance / timer;
+            speedBonus = Math.Tanh(averageSpeed / 100.0);
+            timeBonus = 0.0;
+        }
+        else
+        {
+            speedBonus = 0.0;
+            timeBonus = 1.0 / (timer + 1.0);
+        }
+        double savedFitness = generation[generationMemberIndex].fitness;
+        generation[generationMemberIndex].fitness += speedBonus;
+        generation[generationMemberIndex].fitness += timeBonus;
+
+        //updating fitness and best results
+        double fitness = generation[generationMemberIndex].fitness;
+        if (fitness > totalBestFitness)
+        {
+            totalBestFitness = fitness;
+            breakthroughGen = generationIndex;
+            breakthroughCar = generationMemberIndex;
+        }
+
+        //updating minimal time
+        if (nextCheckpoint >= checkpoints.Count)
+        {
+            if (timer < minTime || minTime < 0)
+            {
+                minTime = timer;
+            }
+        }
+
+        Debug.Log("Fitness: " + generation[generationMemberIndex].fitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + distance / timer);
+        Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
+    }
+
+    void NextGeneration()
+    {
+        generation.Sort((x, y) => -x.fitness.CompareTo(y.fitness));
+
+        List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
+
+        for (int i = 0; i < populationSize; i++)
+        {
+
+            //if we have new best result
+            if (generation[0].fitness > bestNetwork.fitness)
+            {
+                bestNetwork = generation[0];
+            }
+
+            NeuralNetwork newNetwork = NeuralNetwork.Crossover(bestNetwork, bestNetwork);
+
+            newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
+            newGeneration.Add(newNetwork);
+
+        }
+
+        generation = new List<NeuralNetwork>(newGeneration);
+
+        generationIndex++;
+        generationMemberIndex = 0;
+    }
+
+    void PreRun()
+    {
+
+        //initializing neural network
+        NeuralNetwork network = generation[generationMemberIndex];
+        carObject.GetComponent<CarController>().neuralNetwork = network;
+
+        //initializing car parameters
+        carObject.transform.position = carSpawnPoint.transform.position;
+        carObject.transform.rotation = carSpawnPoint.transform.rotation;
+        carObject.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
+        carObject.GetComponent<Rigidbody>().angularVelocity = new Vector3(0.0f, 0.0f, 0.0f);
+        fitnessDeathTimer = 0.0;
+        speedDeathTimer = 0.0;
+        bestFitnessInThisRun = 0.0;
+        distance = 0.0;
+        previousPosition = carSpawnPoint.transform.position;
+        timer = 0.0;
+        nextCheckpoint = 0;
+        collisionDetected = false;
+
+        Debug.Log("Generation " + (generationIndex) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + (breakthroughGen) + " Car: " + breakthroughCar);
 
     }
 
@@ -183,110 +315,17 @@ public class GameController : MonoBehaviour
 
         if (generationMemberIndex != -1)
         {
-            double averageSpeed = distance / timer;
-            double distanceBonus = 0.0;
-            if (nextCheckpoint < checkpoints.Count)
-            {
-                float distanceToNextCheckpoint = Vector3.Distance(currentCar.transform.position, checkpoints[nextCheckpoint].position);
-                distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
-            }
-            double checkpointBonus = nextCheckpoint * 100.0;
-            double speedBonus = 0.0;
-            double timeBonus = 0.0;
-            if (nextCheckpoint < checkpoints.Count)
-            {
-                speedBonus = Math.Tanh(averageSpeed / 100.0);
-                timeBonus = 0.0;
-            }
-            else
-            {
-                speedBonus = 0.0;
-                timeBonus = 1.0 / (timer + 1.0);
-            }
-            double savedFitness = generation[generationMemberIndex].fitness;
-            generation[generationMemberIndex].fitness += speedBonus;
-            generation[generationMemberIndex].fitness += timeBonus;
-            double fitness = generation[generationMemberIndex].fitness;
-            if (fitness > totalBestFitness)
-            {
-                totalBestFitness = fitness;
-                breakthroughGen = generationIndex;
-                breakthroughCar = generationMemberIndex;
-            }
-
-            if(nextCheckpoint >= checkpoints.Count)
-            {
-                if(timer < minTime || minTime < 0)
-                {
-                    minTime = timer;
-                }
-            }
-
-            Debug.Log("Fitness: " + generation[generationMemberIndex].fitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + averageSpeed);
-            Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
+            PostRun();
         }
-
-        //if (generationMemberIndex == 0) {
-        //    Debug.Log("generation[0]");
-        //    Debug.Log(generation[0]);
-        //}
 
         generationMemberIndex++;
 
         if (generationMemberIndex > populationSize - 1)
         {
-
-            generation.Sort((x, y) => -x.fitness.CompareTo(y.fitness));
-
-            List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
-            for(int i = 0; i < populationSize; i++)
-            {
-
-
-                if (generation[0].fitness > bestNetwork.fitness)
-                {
-                    bestNetwork = generation[0];
-                }
-
-                NeuralNetwork newNetwork = NeuralNetwork.Crossover(bestNetwork, bestNetwork);
-
-                newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
-                newGeneration.Add(newNetwork);
-
-            }
-
-            generation = new List<NeuralNetwork>(newGeneration);
-
-            generationIndex++;
-            generationMemberIndex = 0;
+            NextGeneration();
         }
 
-        NeuralNetwork network = generation[generationMemberIndex];
-        currentCar.GetComponent<CarController>().neuralNetwork = network;
-
-        currentCar.transform.position = carSpawnPoint.transform.position;
-        currentCar.transform.rotation = carSpawnPoint.transform.rotation;
-        currentCar.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
-        currentCar.GetComponent<Rigidbody>().angularVelocity = new Vector3(0.0f, 0.0f, 0.0f);
-        fitnessDeathTimer = 0.0;
-        speedDeathTimer = 0.0;
-        bestFitnessInThisRun = 0.0;
-        //Debug.Log("BEST " + bestFitnessInThisRun);
-        distance = 0.0;
-        previousPosition = carSpawnPoint.transform.position;
-        timer = 0.0;
-        nextCheckpoint = 0;
-        //carDistance = 0.0;
-        collisionDetected = false;
-        currentCar.GetComponent<Rigidbody>().isKinematic = true;
-
-        Debug.Log("Generation " + (generationIndex) + " Car: " + generationMemberIndex + " Max: " + totalBestFitness + " Gen: " + (breakthroughGen) + " Car: " + breakthroughCar);
-
-
-        //Debug.Log("Gen: " + generationIndex + " Car: " + generationMemberIndex + " Id: " +
-        //    generation[generationMemberIndex].id + " " +
-        //    generation[generationMemberIndex].parent1Id + " " +
-        //    generation[generationMemberIndex].parent2Id);
+        PreRun();
 
     }
 
