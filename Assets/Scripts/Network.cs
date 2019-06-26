@@ -308,6 +308,32 @@ public class Utils
         return avgList;
     }
 
+    public static double MapRange(double val, double min1, double max1, double min2, double max2, bool clamp = false)
+    {
+        double range = max1 - min1;
+        if (range == 0)
+        {
+            return 0;
+        }
+        double scaledRange = max2 - min2;
+        double scale = scaledRange / range;
+        double dist = val - min1;
+        double scaledDist = dist * scale;
+        double result = min2 + scaledDist;
+        if (clamp)
+        {
+            if (result < min2)
+            {
+                result = min2;
+            }
+            if (result > max2)
+            {
+                result = max2;
+            }
+        }
+        return result;
+    }
+
 }
 
 class Program

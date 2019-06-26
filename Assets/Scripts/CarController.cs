@@ -64,6 +64,7 @@ public class CarController : MonoBehaviour
         }
         //Debug.Log(totalSlip);
         NNInputs.Add(totalSlip);
+        NNInputs.Add(gameController.passFitness);
 
         if(neuralNetwork.inputCount != NNInputs.Count)
         {
