@@ -11,18 +11,51 @@ public class CarController : MonoBehaviour
     public Transform[] rayOrigins;
     public GameObject gameControllerObject;
     public int inputSmooting = 1;
+    public double inputDelay = 0.1;
+    public double outputDelay = 0.1;
 
     [HideInInspector]
     public NeuralNetwork neuralNetwork;
 
+    private const double FPS = 60.0;
+    private double inputSteps;
+    private double outputSteps;
+
     private GameController gameController;
     private Rigidbody rb;
+    private Queue<List<double>> inputQueue = new Queue<List<double>>();
+    private Queue<List<double>> outputQueue = new Queue<List<double>>();
 
     public void Start()
     {
         Physics.queriesHitBackfaces = true;
         gameController = gameControllerObject.GetComponent<GameController>();
         rb = GetComponent<Rigidbody>();
+        inputSteps = (int)(inputDelay * FPS);
+        outputSteps = (int)(outputDelay * FPS);
+
+        for (int list_i = 0; list_i < inputSteps; list_i++)
+        {
+            List<double> emptyInput = new List<double>();
+            for (int input_i = 0; input_i < GameController.INPUT_COUNT; input_i++)
+            {
+                emptyInput.Add(0.0);
+            }
+            inputQueue.Enqueue(emptyInput);
+
+        }
+
+        for (int list_i = 0; list_i < outputSteps; list_i++)
+        {
+            List<double> emptyOutput = new List<double>();
+            for (int output_i = 0; output_i < 2; output_i++)
+            {
+                emptyOutput.Add(0.0);
+            }
+            outputQueue.Enqueue(emptyOutput);
+
+        }
+
     }
 
     public void FixedUpdate()
@@ -76,13 +109,21 @@ public class CarController : MonoBehaviour
         {
             throw new System.Exception("Input lists do not match: NN(" + neuralNetwork.inputCount + ") Inputs(" + NNInputs.Count + ")");
         }
-        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(NNInputs);
-        float motor = maxMotorTorque * (float)neuralNetworkOutput[0];
+
+        inputQueue.Enqueue(NNInputs);
+        List<double> currentInputs = inputQueue.Dequeue();
+
+        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(currentInputs);
+        outputQueue.Enqueue(neuralNetworkOutput);
+        List<double> currentOutputs = outputQueue.Dequeue();
+
+
+        float motor = maxMotorTorque * (float)currentOutputs[0];
         //if(motor < 0.0f)
         //{
         //    motor = 0.0f;
         //}
-        float steering = maxSteeringAngle * (float)neuralNetworkOutput[1];
+        float steering = maxSteeringAngle * (float)currentOutputs[1];
         //Debug.Log("Motor: " + motor + " Steering: " + steering);
 
         //motor = maxMotorTorque * Input.GetAxis("Vertical");
