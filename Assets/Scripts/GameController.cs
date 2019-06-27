@@ -385,6 +385,7 @@ public class GameController : MonoBehaviour
         nextCheckpoint = 0;
         collisionDetected = false;
         passFitness = 0;
+        carObject.GetComponent<CarController>().ResetQueues();
 
         //randomized rotation
         //carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.RandBetween(-45, 45));

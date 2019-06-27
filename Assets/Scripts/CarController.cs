@@ -23,8 +23,8 @@ public class CarController : MonoBehaviour
 
     private GameController gameController;
     private Rigidbody rb;
-    private Queue<List<double>> inputQueue = new Queue<List<double>>();
-    private Queue<List<double>> outputQueue = new Queue<List<double>>();
+    private Queue<List<double>> inputQueue;
+    private Queue<List<double>> outputQueue;
 
     public void Start()
     {
@@ -34,6 +34,14 @@ public class CarController : MonoBehaviour
         inputSteps = (int)(inputDelay * FPS);
         outputSteps = (int)(outputDelay * FPS);
 
+        ResetQueues();
+
+    }
+
+    public void ResetQueues()
+    {
+
+        inputQueue = new Queue<List<double>>();
         for (int list_i = 0; list_i < inputSteps; list_i++)
         {
             List<double> emptyInput = new List<double>();
@@ -45,6 +53,7 @@ public class CarController : MonoBehaviour
 
         }
 
+        outputQueue = new Queue<List<double>>();
         for (int list_i = 0; list_i < outputSteps; list_i++)
         {
             List<double> emptyOutput = new List<double>();

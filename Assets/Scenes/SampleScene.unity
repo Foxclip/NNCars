@@ -347,7 +347,7 @@ MonoBehaviour:
   runAcceptMode: 0
   carObject: {fileID: 223974226}
   carSpawnPoint: {fileID: 1132167140}
-  checkpointsParent: {fileID: 1019728880}
+  checkpointsParent: {fileID: 1189083234}
   terminationDelay: 1
   terminationSpeed: 0.5
   checkpointBonusWeight: 100
@@ -1436,7 +1436,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &433767562
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1677,7 +1677,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &520569046
 Transform:
   m_ObjectHideFlags: 0
@@ -3442,7 +3442,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1019728881
 Transform:
   m_ObjectHideFlags: 0
@@ -3813,7 +3813,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1189083235
 Transform:
   m_ObjectHideFlags: 0
@@ -4726,7 +4726,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &1447560368
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -5446,7 +5446,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1609450804
 Transform:
   m_ObjectHideFlags: 0
