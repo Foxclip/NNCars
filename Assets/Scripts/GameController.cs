@@ -28,8 +28,7 @@ public class GameController : MonoBehaviour
     public RunAcceptMode runAcceptMode;
 
     public GameObject carObject;
-    public GameObject carSpawnPoint;
-    public GameObject checkpointsParent;
+    public Transform track;
     public double terminationDelay = 1.0;
     public double terminationSpeed = 0.2;
     public double checkpointBonusWeight = 100.0;
@@ -60,6 +59,8 @@ public class GameController : MonoBehaviour
         public double time;
         public double nextCheckpoint;
     };
+
+    private Transform carSpawnPoint;
     private List<Transform> checkpoints = new List<Transform>();
     private NeuralNetwork bestNetwork;
     private double bestFitnessInThisPass = 0.0;
@@ -82,8 +83,12 @@ public class GameController : MonoBehaviour
     void Start()
     {
 
+        //loading spawn point
+        carSpawnPoint = track.Find("Spawn");
+
         //loading checkpoints
-        foreach (Transform child in checkpointsParent.transform)
+        Transform checkpointsParent = track.Find("Checkpoints");
+        foreach (Transform child in checkpointsParent)
         {
             checkpoints.Add(child);
         }
