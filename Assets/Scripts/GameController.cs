@@ -32,9 +32,11 @@ public class GameController : MonoBehaviour
     public GameObject checkpointsParent;
     public double terminationDelay = 1.0;
     public double terminationSpeed = 0.2;
+    public double checkpointBonusWeight = 100.0;
+    public double distanceBonusWeight = 10.0;
+    public double speedBonusWeight = 0.01;
 
     public Text genRunPassText;
-    public Text runFitnessText;
     public Text passFitnessText;
     public Text maxFitnessText;
     public Text bestCarText;
@@ -132,7 +134,7 @@ public class GameController : MonoBehaviour
 
     bool CheckDeathConditions()
     {
-        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || carObject.transform.position.y < 0.0f || collisionDetected)
+        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || carObject.transform.position.y < 0.0f || collisionDetected || nextCheckpoint >= checkpoints.Count)
         {
             if (fitnessDeathTimer > terminationDelay)
             {
@@ -200,11 +202,11 @@ public class GameController : MonoBehaviour
         if (nextCheckpoint < checkpoints.Count)
         {
             float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
-            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
+            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * distanceBonusWeight;
         }
 
         //checkpoint bonus
-        double checkpointBonus = nextCheckpoint * 100.0;
+        double checkpointBonus = nextCheckpoint * checkpointBonusWeight;
 
         passFitness = checkpointBonus + distanceBonus;
 
@@ -327,24 +329,13 @@ public class GameController : MonoBehaviour
     void PostPass()
     {
 
-        //distance bonus (not added to passFitness)
-        double distanceBonus = 0.0;
-        if (nextCheckpoint < checkpoints.Count)
-        {
-            float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
-            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
-        }
-
-        //checkpoint bonus (not added to pass fitness)
-        double checkpointBonus = nextCheckpoint * 100.0;
-
         //speed and time bonuses
         double speedBonus = 0.0;
         double timeBonus = 0.0;
         if (nextCheckpoint < checkpoints.Count)
         {
             double averageSpeed = distance / timer;
-            speedBonus = Math.Tanh(averageSpeed / 100.0);
+            speedBonus = Math.Tanh(averageSpeed * speedBonusWeight);
             timeBonus = 0.0;
         }
         else
@@ -362,6 +353,16 @@ public class GameController : MonoBehaviour
         pass.time = timer;
         pass.nextCheckpoint = nextCheckpoint;
         passes.Add(pass);
+
+        //distance bonus (not added to passFitness)
+        double distanceBonus = 0.0;
+        if (nextCheckpoint < checkpoints.Count)
+        {
+            float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
+            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
+        }
+        //checkpoint bonus (not added to pass fitness)
+        double checkpointBonus = nextCheckpoint * 100.0;
 
         Debug.Log("Pass fitness: " + passFitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + distance / timer);
         Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
