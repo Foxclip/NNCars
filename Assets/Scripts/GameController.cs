@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
 
-    private const int INPUT_COUNT = 12;
+    private const int INPUT_COUNT = 11;
 
     public int layerCount = 1;
     public int neuronsInLayer = 16;
@@ -18,6 +18,14 @@ public class GameController : MonoBehaviour
     public float maxMutation = 1;
     public float speedupTimeScale = 10;
     public float checkpointReachDistance = 3.0f;
+    public double randomAngleMin = -25.0;
+    public double randomAngleMax = 25.0;
+    public enum RunAcceptMode
+    {
+        All,
+        Median
+    };
+    public RunAcceptMode runAcceptMode;
 
     public GameObject carObject;
     public GameObject carSpawnPoint;
@@ -44,11 +52,16 @@ public class GameController : MonoBehaviour
     [HideInInspector]
     public double passFitness;
 
+    private struct Pass
+    {
+        public double fitness;
+        public double time;
+        public double nextCheckpoint;
+    };
     private List<Transform> checkpoints = new List<Transform>();
     private NeuralNetwork bestNetwork;
     private double bestFitnessInThisPass = 0.0;
-    private double runFitness;
-    //private List<double> passFitnesses;
+    private List<Pass> passes;
     private double fitnessDeathTimer = 0.0;
     private double speedDeathTimer = 0.0;
     private int generationIndex = 0;
@@ -60,7 +73,6 @@ public class GameController : MonoBehaviour
     private double timer = 0.0;
     private double distance = 0.0;
     private double acceptedMinTime = -1.0;
-    private double runMinTime = -1.0;
     private Vector3 previousPosition;
 
     private bool fastForward = false;
@@ -120,7 +132,7 @@ public class GameController : MonoBehaviour
 
     bool CheckDeathConditions()
     {
-        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || carObject.transform.position.y < 0.0f || collisionDetected || ((runFitness < bestRunFitness) && (passIndex > 0)))
+        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || carObject.transform.position.y < 0.0f || collisionDetected)
         {
             if (fitnessDeathTimer > terminationDelay)
             {
@@ -201,7 +213,6 @@ public class GameController : MonoBehaviour
     void UpdateUIText()
     {
         genRunPassText.text = "GEN " + generationIndex + " RUN " + runIndex + " PASS " + passIndex;
-        runFitnessText.text = "RUN FITNESS: " + runFitness;
         passFitnessText.text = "PASS FITNESS: " + passFitness;
         maxFitnessText.text = "MAX FITNESS: " + bestRunFitness;
         bestCarText.text = "BEST: GEN " + breakthroughGen + " RUN " + breakthroughRun;
@@ -259,6 +270,29 @@ public class GameController : MonoBehaviour
     void PostRun()
     {
 
+        double runMinTime = -1.0;
+        double runFitness = 0.0;
+
+        //getting fitness
+        if (runAcceptMode == RunAcceptMode.Median)
+        {
+            Pass medianPass = passes[(passes.Count - 1) / 2];
+            runFitness = medianPass.fitness;
+            if(medianPass.nextCheckpoint >= checkpoints.Count)
+            {
+                runMinTime = medianPass.time;
+            }
+        }
+        else if (runAcceptMode == RunAcceptMode.All)
+        {
+            passes.Sort((x, y) => x.fitness.CompareTo(y.fitness));
+            runFitness = passes[0].fitness;
+            if(passes[0].nextCheckpoint >= checkpoints.Count)
+            {
+                runMinTime = passes[0].time;
+            }
+        }
+
         //updating fitness and best results
         if (runFitness > bestRunFitness)
         {
@@ -266,19 +300,14 @@ public class GameController : MonoBehaviour
             breakthroughGen = generationIndex;
             breakthroughRun = runIndex;
         }
-        generation[runIndex].fitness = runFitness;
 
-        //updating minimal time
-        if (nextCheckpoint >= checkpoints.Count)
+        //updating timer
+        if(runMinTime >= 0.0 && (runMinTime < acceptedMinTime || acceptedMinTime < 0.0))
         {
-            if (runMinTime < acceptedMinTime || acceptedMinTime < 0)
-            {
-                if (passIndex >= passCount - 1)
-                {
-                    acceptedMinTime = timer;
-                }
-            }
+            acceptedMinTime = runMinTime;
         }
+
+        generation[runIndex].fitness = runFitness;
 
     }
 
@@ -289,8 +318,7 @@ public class GameController : MonoBehaviour
         NeuralNetwork network = generation[runIndex];
         carObject.GetComponent<CarController>().neuralNetwork = network;
 
-        runFitness = 0;
-        //passFitnesses = new List<double>();
+        passes = new List<Pass>();
 
         passIndex = 0;
 
@@ -328,22 +356,12 @@ public class GameController : MonoBehaviour
         passFitness += speedBonus;
         passFitness += timeBonus;
 
-        //updating run fitness
-        //passFitnesses.Add(passFitness);
-        //passFitnesses.Sort((x, y) => x.CompareTo(y));
-        //runFitness = passFitnesses[(passFitnesses.Count - 1) / 2];
-        if(passIndex == 0 || passFitness < runFitness)
-        {
-            runFitness = passFitness;
-        }
-
-        //updating timer
-        if(nextCheckpoint >= checkpoints.Count) {
-            if (timer < runMinTime || runMinTime < 0)
-            {
-                runMinTime = timer;
-            }
-        }
+        //adding this pass to the list
+        Pass pass = new Pass();
+        pass.fitness = passFitness;
+        pass.time = timer;
+        pass.nextCheckpoint = nextCheckpoint;
+        passes.Add(pass);
 
         Debug.Log("Pass fitness: " + passFitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + distance / timer);
         Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
@@ -369,7 +387,7 @@ public class GameController : MonoBehaviour
 
         //randomized rotation
         //carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.RandBetween(-45, 45));
-        carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(passIndex, 0, passCount - 1, -45, 45));
+        carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(passIndex, 0, passCount - 1, randomAngleMin, randomAngleMax));
 
         Debug.Log("Generation " + generationIndex + " Car: " + runIndex + " Pass: " + passIndex + " Max: " + bestRunFitness + " Gen: " + breakthroughGen + " Car: " + breakthroughRun);
 

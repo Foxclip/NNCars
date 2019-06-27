@@ -54,17 +54,23 @@ public class CarController : MonoBehaviour
         //Debug.Log("CarA: " + carAngle + "VelA: " + velocityAngle + " AoA: " + angleOfAttack);
 
         double totalSlip = 0.0;
-        foreach (AxleInfo axleInfo in axleInfos)
-        {
-            WheelHit hit;
-            axleInfo.leftWheel.GetGroundHit(out hit);
-            totalSlip += hit.sidewaysSlip;
-            axleInfo.rightWheel.GetGroundHit(out hit);
-            totalSlip += hit.sidewaysSlip;
-        }
+        //foreach (AxleInfo axleInfo in axleInfos)
+        //{
+        //    WheelHit hit;
+        //    axleInfo.leftWheel.GetGroundHit(out hit);
+        //    totalSlip += hit.sidewaysSlip;
+        //    axleInfo.rightWheel.GetGroundHit(out hit);
+        //    totalSlip += hit.sidewaysSlip;
+        //}
+        AxleInfo rearAxle = axleInfos[1];
+        WheelHit wheelHit;
+        rearAxle.leftWheel.GetGroundHit(out wheelHit);
+        totalSlip += wheelHit.sidewaysSlip;
+        rearAxle.rightWheel.GetGroundHit(out wheelHit);
+        totalSlip += wheelHit.sidewaysSlip;
         //Debug.Log(totalSlip);
         NNInputs.Add(totalSlip);
-        NNInputs.Add(gameController.passFitness);
+        //NNInputs.Add(gameController.passFitness);
 
         if(neuralNetwork.inputCount != NNInputs.Count)
         {

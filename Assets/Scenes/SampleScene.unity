@@ -334,14 +334,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   layerCount: 1
-  neuronsInLayer: 32
+  neuronsInLayer: 2
   populationSize: 10
-  passCount: 3
+  passCount: 5
   crossoverPower: 2
   mutationPower: 3
   maxMutation: 1
   speedupTimeScale: 100
   checkpointReachDistance: 5
+  randomAngleMin: -25
+  randomAngleMax: 25
+  runAcceptMode: 0
   carObject: {fileID: 223974226}
   carSpawnPoint: {fileID: 1132167140}
   checkpointsParent: {fileID: 1019728880}
