@@ -331,7 +331,7 @@ public class GameController : MonoBehaviour
 
     }
 
-    void PostPass()
+    bool PostPass()
     {
 
         //speed and time bonuses
@@ -371,6 +371,13 @@ public class GameController : MonoBehaviour
 
         Debug.Log("Pass fitness: " + passFitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + distance / timer);
         Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
+
+        if(runAcceptMode == RunAcceptMode.All && passFitness < bestRunFitness)
+        {
+            return true;
+        }
+
+        return false;
 
     }
 
@@ -419,11 +426,11 @@ public class GameController : MonoBehaviour
     void NextPass()
     {
 
-        PostPass();
+        bool runAborted = PostPass();
 
         passIndex++;
 
-        if(passIndex > passCount - 1)
+        if(passIndex > passCount - 1 || runAborted)
         {
             NextRun();
         }
