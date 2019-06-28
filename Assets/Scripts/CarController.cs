@@ -13,6 +13,7 @@ public class CarController : MonoBehaviour
     public int inputSmooting = 1;
     public double inputDelay = 0.1;
     public double outputDelay = 0.1;
+    public bool averagedInput = true;
 
     [HideInInspector]
     public NeuralNetwork neuralNetwork;
@@ -120,12 +121,30 @@ public class CarController : MonoBehaviour
         }
 
         inputQueue.Enqueue(NNInputs);
-        List<double> currentInputs = inputQueue.Dequeue();
+        List<double> currentInputs = new List<double>();
+        if(averagedInput)
+        {
+            List<double>[] inputs = inputQueue.ToArray();
+            for(int input_i = 0; input_i < inputs[0].Count; input_i++)
+            {
+                double sum = 0.0;
+                for(int list_i = 0; list_i < inputs.Length; list_i++)
+                {
+                    sum += inputs[list_i][input_i];
+                }
+                sum /= inputs.Length;
+                currentInputs.Add(sum);
+            }
+            inputQueue.Dequeue();
+        }
+        else
+        {
+            currentInputs = inputQueue.Dequeue();
+        }
 
         List <double> neuralNetworkOutput = neuralNetwork.Feedforward(currentInputs);
         outputQueue.Enqueue(neuralNetworkOutput);
         List<double> currentOutputs = outputQueue.Dequeue();
-
 
         float motor = maxMotorTorque * (float)currentOutputs[0];
         //if(motor < 0.0f)

@@ -346,7 +346,7 @@ MonoBehaviour:
   randomAngleMax: 25
   runAcceptMode: 0
   carObject: {fileID: 223974226}
-  track: {fileID: 198816096}
+  track: {fileID: 1681367095}
   terminationDelay: 1
   terminationSpeed: 0.5
   checkpointBonusWeight: 100
@@ -793,7 +793,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &198816096
 Transform:
   m_ObjectHideFlags: 0
@@ -1785,7 +1785,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 576465309}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -16.693184, y: 21.9325, z: -30.910622}
+  m_LocalPosition: {x: -16.693184, y: 21.9325, z: -11.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 1681367095}
@@ -4985,7 +4985,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1681367095
 Transform:
   m_ObjectHideFlags: 0
@@ -6538,6 +6538,16 @@ PrefabInstance:
       propertyPath: rayOrigins.Array.data[8]
       value: 
       objectReference: {fileID: 1823321741}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: inputDelay
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: outputDelay
+      value: 0.1
+      objectReference: {fileID: 0}
     - target: {fileID: 5134176667151529528, guid: ed225f366ade76c4ea538e83073a1d8c,
         type: 3}
       propertyPath: m_AngularDrag
