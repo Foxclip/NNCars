@@ -306,6 +306,7 @@ public class GameController : MonoBehaviour
             bestRunFitness = runFitness;
             breakthroughGen = generationIndex;
             breakthroughRun = runIndex;
+            generation[runIndex].Serialize("gen" + generationIndex + "run" + runIndex + ".xml");
         }
 
         //updating timer

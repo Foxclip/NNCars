@@ -4,13 +4,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Runtime.Serialization;
+using System.Xml;
+using System.IO;
 
+[DataContract(Name = "_Neuron", IsReference = true)]
+[KnownType(typeof(Neuron))]
+[KnownType(typeof(InputNeuron))]
 public abstract class _Neuron
 {
 
+    [DataMember]
     protected string name;
+    [DataMember]
     public double value = 0;
+    [DataMember]
     private List<Neuron> outputLinks = new List<Neuron>();
+    [DataMember]
     private int inputCount = 0;
 
     public _Neuron(string name)
@@ -30,6 +40,7 @@ public abstract class _Neuron
 
 }
 
+[DataContract(Name = "InputNeuron", IsReference = true)]
 public class InputNeuron : _Neuron
 {
 
@@ -46,11 +57,15 @@ public class InputNeuron : _Neuron
 
 }
 
+[DataContract(Name = "Neuron", IsReference = true)]
 public class Neuron : _Neuron
 {
 
+    [DataMember]
     public List<_Neuron> inputLinks = new List<_Neuron>();
+    [DataMember]
     public List<double> weights = new List<double>();
+    [DataMember]
     private double bias;
 
     public Neuron(string name, List<double> weights = null, double bias = 0) : base(name)
@@ -116,20 +131,33 @@ public class Neuron : _Neuron
 
 }
 
+[DataContract(Name = "NeuralNetwork")]
 public class NeuralNetwork
 {
 
+    [DataMember]
     public int inputCount;
+    [DataMember]
     private int hiddenLayers;
+    [DataMember]
     private int neuronsInLayer;
+    [DataMember]
     private static int networkIdCounter = 0;
+    [DataMember]
     public int id = 0;
+    [DataMember]
     public int parent1Id = -1;
+    [DataMember]
     public int parent2Id = -1;
+    [DataMember]
     public double fitness = 0;
+    [DataMember]
     public List<_Neuron> neurons = new List<_Neuron>();
+    [DataMember]
     private List<InputNeuron> inputNeurons = new List<InputNeuron>();
+    [DataMember]
     public List<Neuron> hiddenNeurons = new List<Neuron>();
+    [DataMember]
     public List<Neuron> outputNeurons = new List<Neuron>();
 
     public NeuralNetwork(int inputCount, int hiddenLayers, int neuronsInLayer)
@@ -273,12 +301,34 @@ public class NeuralNetwork
 
     public override string ToString()
     {
-        string s = String.Format("id: {0}", id);
+        string s = String.Format("id: {0}\n", id);
         foreach (_Neuron neuron in neurons)
         {
-            s += String.Format("    {0}", neuron.ToString());
+            s += String.Format("    {0}\n", neuron.ToString());
         }
         return s;
+    }
+
+    public void Serialize(String fileName)
+    {
+        var settings = new XmlWriterSettings();
+        settings.Indent = true;
+        settings.IndentChars = "    ";
+        XmlWriter writer = XmlWriter.Create(fileName, settings);
+        DataContractSerializer ser = new DataContractSerializer(typeof(NeuralNetwork));
+        ser.WriteObject(writer, this);
+        writer.Close();
+    }
+
+    public static NeuralNetwork Deserialize(String fileName)
+    {
+        FileStream fs = new FileStream(fileName, FileMode.Open);
+        XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, new XmlDictionaryReaderQuotas());
+        DataContractSerializer ser = new DataContractSerializer(typeof(NeuralNetwork));
+        NeuralNetwork deserializedNetwork = (NeuralNetwork)ser.ReadObject(reader, true);
+        reader.Close();
+        fs.Close();
+        return deserializedNetwork;
     }
 
 }
@@ -362,11 +412,17 @@ class Program
         Console.WriteLine(network3);
         Console.WriteLine();
 
-        network3.Mutate(10, 1000);
+        network3.Mutate(1, 1);
         network3.Feedforward(new List<double> { 2, 3 });
         Console.WriteLine(network3);
         Console.WriteLine();
 
+        network3.Serialize("network.xml");
+
+        NeuralNetwork network4 = NeuralNetwork.Deserialize("network.xml");
+        network3.Feedforward(new List<double> { 2, 3 });
+        Console.WriteLine(network4);
+        Console.WriteLine();
 
     }
 }
