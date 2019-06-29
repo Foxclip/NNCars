@@ -26,6 +26,7 @@ public class GameController : MonoBehaviour
         Median
     };
     public RunAcceptMode runAcceptMode;
+    public bool loadNetwork = true;
 
     public GameObject carObject;
     public Transform track;
@@ -94,7 +95,14 @@ public class GameController : MonoBehaviour
         }
 
         //initial neural network
-        bestNetwork = new NeuralNetwork(INPUT_COUNT, layerCount, neuronsInLayer);
+        if (loadNetwork)
+        {
+            bestNetwork = NeuralNetwork.Deserialize("network.xml");
+        }
+        else
+        {
+            bestNetwork = new NeuralNetwork(INPUT_COUNT, layerCount, neuronsInLayer);
+        }
 
         PreGeneration();
         PreRun();

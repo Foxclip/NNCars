@@ -323,7 +323,9 @@ public class NeuralNetwork
     public static NeuralNetwork Deserialize(String fileName)
     {
         FileStream fs = new FileStream(fileName, FileMode.Open);
-        XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, new XmlDictionaryReaderQuotas());
+        XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas();
+        quotas.MaxDepth = 256;
+        XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
         DataContractSerializer ser = new DataContractSerializer(typeof(NeuralNetwork));
         NeuralNetwork deserializedNetwork = (NeuralNetwork)ser.ReadObject(reader, true);
         reader.Close();
