@@ -36,6 +36,8 @@ public class GameController : MonoBehaviour
     public double distanceBonusWeight = 10.0;
     public double speedBonusWeight = 0.01;
 
+    public string saveFolderPath = "Networks/";
+
     public Text genRunPassText;
     public Text passFitnessText;
     public Text maxFitnessText;
@@ -285,10 +287,11 @@ public class GameController : MonoBehaviour
     void PostRun()
     {
 
+        //calculating fitness of the run
+
         double runMinTime = -1.0;
         double runFitness = 0.0;
 
-        //getting fitness
         if (runAcceptMode == RunAcceptMode.Median)
         {
             Pass medianPass = passes[(passes.Count - 1) / 2];
@@ -308,22 +311,31 @@ public class GameController : MonoBehaviour
             }
         }
 
+        //has to be in here so it will be saved in the file
+        generation[runIndex].fitness = runFitness;
+
         //updating fitness and best results
         if (runFitness > bestRunFitness)
         {
+
+            //updating index of best run
             bestRunFitness = runFitness;
             breakthroughGen = generationIndex;
             breakthroughRun = runIndex;
-            generation[runIndex].Serialize("gen" + generationIndex + "run" + runIndex + ".xml");
+
+            //saving best neural network to file
+            String trackName = track.name.Replace(' ', '_');
+            String genRunString = "g" + generationIndex + "r" + runIndex;
+            String dateString = DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss");
+            generation[runIndex].Serialize(saveFolderPath + trackName + "_" + dateString + "_" + genRunString + ".xml");
+
         }
 
-        //updating timer
+        //updating best time
         if(runMinTime >= 0.0 && (runMinTime < acceptedMinTime || acceptedMinTime < 0.0))
         {
             acceptedMinTime = runMinTime;
         }
-
-        generation[runIndex].fitness = runFitness;
 
     }
 

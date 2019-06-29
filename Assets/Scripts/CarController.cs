@@ -4,41 +4,50 @@ using System.Collections.Generic;
 
 public class CarController : MonoBehaviour
 {
-    public List<AxleInfo> axleInfos; // the information about each individual axle
-    public float maxMotorTorque = 1000.0f; // maximum torque the motor can apply to wheel
-    public float maxSteeringAngle = 45.0f; // maximum steer angle the wheel can have
-    public GameObject carSpawnPoint;
-    public Transform[] rayOrigins;
-    public GameObject gameControllerObject;
-    public int inputSmooting = 1;
-    public double inputDelay = 0.1;
-    public double outputDelay = 0.1;
-    public bool averagedInput = true;
+    public bool manualControl = false;          //if by some reason manual control is needed
+    public List<AxleInfo> axleInfos;            //the information about each individual axle
+    public float maxMotorTorque = 1000.0f;      // maximum torque the motor can apply to wheel
+    public float maxSteeringAngle = 45.0f;      // maximum steer angle the wheel can have
+    public GameObject carSpawnPoint;            //place where car spawns every pass
+    public Transform[] rayOrigins;              //raycasts are made in these directions
+    public GameObject gameControllerObject;     //GameController object
+    public int steeringSmoothing = 1;           //how much steering is smoothed out, needed so steering will respond slower
+    public double inputDelay = 0.1;             //inputs are fed to neural network with this delay
+    public double outputDelay = 0.1;            //outputs are sent to the wheels, but they get there after this delay
+    public bool averagedInput = true;           //all values in the input queue are averaged, setting this to true will lead to smoother response of the neural network
 
     [HideInInspector]
-    public NeuralNetwork neuralNetwork;
+    public NeuralNetwork neuralNetwork;         //current neural network assigned to the car
 
-    private const double FPS = 60.0;
-    private double inputSteps;
-    private double outputSteps;
+    private const double FPS = 60.0;            //frames per second, is used to calculate size of input/output queues
+    private double inputSteps;                  //how long input queue is
+    private double outputSteps;                 //how long ouput queue is
 
-    private GameController gameController;
-    private Rigidbody rb;
-    private Queue<List<double>> inputQueue;
-    private Queue<List<double>> outputQueue;
+    private GameController gameController;      //GameController script
+    private Rigidbody rb;                       //Rigidbody of the car
+    private Queue<List<double>> inputQueue;     //all inputs are going through this queue
+    private Queue<List<double>> outputQueue;    //all outputs are going through this queue
 
     public void Start()
     {
+        //Raycasts will hit backfaces of objects
         Physics.queriesHitBackfaces = true;
+
+        //getting some values
         gameController = gameControllerObject.GetComponent<GameController>();
         rb = GetComponent<Rigidbody>();
+
+        //calculating lengths of input/output queues
         inputSteps = (int)(inputDelay * FPS);
         outputSteps = (int)(outputDelay * FPS);
 
+        //input/output queues should be reset before starting, since neural network takes values from the front of the queue
         ResetQueues();
 
     }
 
+    //fills input and output queues with zeroes
+    //should be called before starting new pass
     public void ResetQueues()
     {
 
@@ -71,10 +80,13 @@ public class CarController : MonoBehaviour
     public void FixedUpdate()
     {
 
+        //if rigidbody was set to kinematic, it has to be set to false
         rb.isKinematic = false;
 
+        //inputs which will be fed to neural network
         List<double> NNInputs = new List<double>();
 
+        //adding raycast lengths to list of inputs
         foreach(Transform rayOrigin in rayOrigins)
         {
             RaycastHit hit;
@@ -88,42 +100,32 @@ public class CarController : MonoBehaviour
             }
         }
 
-        //NNInputs.Add(gameController.nextCheckpoint);
+        //adding velocity
         NNInputs.Add(rb.velocity.magnitude);
 
-        //double carAngle = Mathf.Rad2Deg * (Mathf.Atan2(transform.forward.x, transform.forward.z));
-        //double velocityAngle = Mathf.Rad2Deg * (Mathf.Atan2(rb.velocity.x, rb.velocity.z));
-        //double angleOfAttack = (carAngle - velocityAngle) % 360;
-        //Debug.Log("CarA: " + carAngle + "VelA: " + velocityAngle + " AoA: " + angleOfAttack);
-
-        double totalSlip = 0.0;
-        //foreach (AxleInfo axleInfo in axleInfos)
-        //{
-        //    WheelHit hit;
-        //    axleInfo.leftWheel.GetGroundHit(out hit);
-        //    totalSlip += hit.sidewaysSlip;
-        //    axleInfo.rightWheel.GetGroundHit(out hit);
-        //    totalSlip += hit.sidewaysSlip;
-        //}
+        //adding slip of the rear wheels
+        double rearWheelsSlip = 0.0;
         AxleInfo rearAxle = axleInfos[1];
         WheelHit wheelHit;
         rearAxle.leftWheel.GetGroundHit(out wheelHit);
-        totalSlip += wheelHit.sidewaysSlip;
+        rearWheelsSlip += wheelHit.sidewaysSlip;
         rearAxle.rightWheel.GetGroundHit(out wheelHit);
-        totalSlip += wheelHit.sidewaysSlip;
-        //Debug.Log(totalSlip);
-        NNInputs.Add(totalSlip);
-        //NNInputs.Add(gameController.passFitness);
+        rearWheelsSlip += wheelHit.sidewaysSlip;
+        NNInputs.Add(rearWheelsSlip);
 
+        //if neural network has less or more inputs then in the input list
         if(neuralNetwork.inputCount != NNInputs.Count)
         {
             throw new System.Exception("Input lists do not match: NN(" + neuralNetwork.inputCount + ") Inputs(" + NNInputs.Count + ")");
         }
 
+        //inputs which come now will be put to the back of the input queue
         inputQueue.Enqueue(NNInputs);
+        //and this is the list for the inputs which will be fed to the neural network now
         List<double> currentInputs = new List<double>();
         if(averagedInput)
         {
+            //averaging all inputs available in the input queue
             List<double>[] inputs = inputQueue.ToArray();
             for(int input_i = 0; input_i < inputs[0].Count; input_i++)
             {
@@ -139,32 +141,44 @@ public class CarController : MonoBehaviour
         }
         else
         {
+            //if input is not averaged, we just take it from the back of the input queue
             currentInputs = inputQueue.Dequeue();
         }
 
+        //feeding inputs to the neural network
         List <double> neuralNetworkOutput = neuralNetwork.Feedforward(currentInputs);
+
+        //adding output of the neural network to the back of the output queue
         outputQueue.Enqueue(neuralNetworkOutput);
+
+        //curent outputs are taken from the back of the output queue
         List<double> currentOutputs = outputQueue.Dequeue();
 
-        float motor = maxMotorTorque * (float)currentOutputs[0];
-        //if(motor < 0.0f)
-        //{
-        //    motor = 0.0f;
-        //}
-        float steering = maxSteeringAngle * (float)currentOutputs[1];
-        //Debug.Log("Motor: " + motor + " Steering: " + steering);
+        //choosing between manual and automatic control
+        float motor = 0.0f;
+        float steering = 0.0f;
+        if (manualControl)
+        {
+            motor = maxMotorTorque * Input.GetAxis("Vertical");
+            steering = maxSteeringAngle * Input.GetAxis("Horizontal");
+        }
+        else
+        {
+            motor = maxMotorTorque * (float)currentOutputs[0];
+            steering = maxSteeringAngle * (float)currentOutputs[1];
+        }
 
-        //motor = maxMotorTorque * Input.GetAxis("Vertical");
-        //steering = maxSteeringAngle * Input.GetAxis("Horizontal");
-
+        //setting values to the wheels
         foreach (AxleInfo axleInfo in axleInfos)
         {
 
-            for (int i = 0; i < inputSmooting; i++)
+            //smoothing steering by repeatedly averaging target position with position of the wheels
+            for (int i = 0; i < steeringSmoothing; i++)
             {
                 steering = (steering + axleInfo.leftWheel.steerAngle) / 2.0f;
             }
 
+            //setting values of the wheel colliders
             if (axleInfo.steering)
             {
                 axleInfo.leftWheel.steerAngle = steering;
@@ -175,13 +189,15 @@ public class CarController : MonoBehaviour
                 axleInfo.leftWheel.motorTorque = motor;
                 axleInfo.rightWheel.motorTorque = motor;
             }
+
+            //visual wheels have to be updated
             ApplyLocalPositionToVisuals(axleInfo.leftWheel);
             ApplyLocalPositionToVisuals(axleInfo.rightWheel);
         }
     }
 
-    // finds the corresponding visual wheel
-    // correctly applies the transform
+    //finds the corresponding visual wheel
+    //correctly applies the transform
     public void ApplyLocalPositionToVisuals(WheelCollider collider)
     {
         if (collider.transform.childCount == 0)
@@ -199,6 +215,7 @@ public class CarController : MonoBehaviour
         visualWheel.transform.rotation = rotation * Quaternion.Euler(0.0f, 0.0f, 90.0f);
     }
 
+    //detects if car collided with a wall
     void OnCollisionEnter(Collision collision)
     {
         gameController.collisionDetected = true;
@@ -211,6 +228,6 @@ public class AxleInfo
 {
     public WheelCollider leftWheel;
     public WheelCollider rightWheel;
-    public bool motor; // is this wheel attached to motor?
-    public bool steering; // does this wheel apply steer angle?
+    public bool motor;                  //is this wheel attached to motor?
+    public bool steering;               //does this wheel apply steer angle?
 }
