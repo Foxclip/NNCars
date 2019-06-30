@@ -7,37 +7,38 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
 
-    public const int INPUT_COUNT = 11;
+    public const int INPUT_COUNT = 11;              //number of inputs neural network will have
 
-    public int layerCount = 1;
-    public int neuronsInLayer = 16;
-    public int populationSize = 10;
-    public int passCount = 3;
-    public float crossoverPower = 2;
-    public float mutationPower = 10;
-    public float maxMutation = 1;
-    public float speedupTimeScale = 10;
-    public float checkpointReachDistance = 3.0f;
-    public double randomAngleMin = -25.0;
-    public double randomAngleMax = 25.0;
+    public int layerCount = 1;                      //number of hidden layers neural network will have
+    public int neuronsInLayer = 16;                 //number of neurons in hidden layers
+    public int populationSize = 10;                 //number of diffrerent neural networks in generation
+    public int passCount = 3;                       //to improve stability of the solution, several passes are made for each neural network
+    public float crossoverPower = 2;                //how likely neural networks will choose parent from the top
+    public float mutationPower = 10;                //how likely small mutations are
+    public float maxMutation = 1;                   //maximal amount of mutation in generation
+    public float speedupTimeScale = 10;             //when pressing Space, simulation will speed up
+    public float checkpointReachDistance = 3.0f;    //checkpoint is counted as reached when car is within this distance
+    public double randomAngleMin = -25.0;           //minimal angle of random rotation in the beginning of each pass
+    public double randomAngleMax = 25.0;            //maximal angle
     public enum RunAcceptMode
     {
         All,
         Median
     };
-    public RunAcceptMode runAcceptMode;
-    public bool loadNetwork = true;
+    public RunAcceptMode runAcceptMode;             //determines how fitness of the run is calculated
+    public bool loadNetwork = true;                 //load neural network from file before starting?
 
-    public GameObject carObject;
-    public Transform track;
-    public double terminationDelay = 1.0;
-    public double terminationSpeed = 0.2;
-    public double checkpointBonusWeight = 100.0;
-    public double distanceBonusWeight = 10.0;
-    public double speedBonusWeight = 0.01;
+    public GameObject carObject;                    //GameObject of the car
+    public Transform track;                         //transform of the track
+    public double terminationDelay = 1.0;           //pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time
+    public double terminationSpeed = 0.2;           //what speed is too low
+    public double checkpointBonusWeight = 100.0;    //weight of the checkpoint bonus
+    public double distanceBonusWeight = 10.0;       //weight of the distance bonus
+    public double speedBonusWeight = 0.01;          //weight of the speed bonus
 
-    public string saveFolderPath = "Networks/";
+    public string saveFolderPath = "Networks/";     //folder which neural networks are saved to
 
+    //UI text
     public Text genRunPassText;
     public Text passFitnessText;
     public Text maxFitnessText;
@@ -48,14 +49,15 @@ public class GameController : MonoBehaviour
     public Text fitnessDeathTimerText;
 
     [HideInInspector]
-    public List<NeuralNetwork> generation = new List<NeuralNetwork>();
+    public List<NeuralNetwork> generation = new List<NeuralNetwork>();  //current generation of neural networks
     [HideInInspector]
-    public bool collisionDetected = false;
+    public bool collisionDetected = false;                              //car collided with a wall
     [HideInInspector]
-    public int nextCheckpoint = 0;
+    public int nextCheckpoint = 0;                                      //index of the next checkpoint
     [HideInInspector]
-    public double passFitness;
+    public double passFitness;                                          //fitness of the current pass
 
+    //this is needed to calculate fitness of the run
     private struct Pass
     {
         public double fitness;
@@ -63,25 +65,25 @@ public class GameController : MonoBehaviour
         public double nextCheckpoint;
     };
 
-    private Transform carSpawnPoint;
-    private List<Transform> checkpoints = new List<Transform>();
-    private NeuralNetwork bestNetwork;
-    private double bestFitnessInThisPass = 0.0;
-    private List<Pass> passes;
-    private double fitnessDeathTimer = 0.0;
-    private double speedDeathTimer = 0.0;
-    private int generationIndex = 0;
-    private int runIndex = 0;
-    private int passIndex = 0;
-    private double bestRunFitness = 0.0;
-    private int breakthroughGen = 0;
-    private int breakthroughRun = 0;
-    private double timer = 0.0;
-    private double distance = 0.0;
-    private double acceptedMinTime = -1.0;
-    private Vector3 previousPosition;
+    private Transform carSpawnPoint;                                //where car will be placed before strting a pass
+    private List<Transform> checkpoints = new List<Transform>();    //list of all checkpoints in the track
+    private NeuralNetwork bestNetwork;                              //best result of the simulation
+    private double bestFitnessInThisPass = 0.0;                     //best fitness achieved in this pass, pass is ended if it does not imporve for some amount of time
+    private List<Pass> passes;                                      //list of passes in the run, used to calculate fitness of the run
+    private double fitnessDeathTimer = 0.0;                         //how much time passed since last improvement of bestFitnessInThisPass
+    private double speedDeathTimer = 0.0;                           //how much time passed since speed was not too low
+    private int generationIndex = 0;                                //index of current generation
+    private int runIndex = 0;                                       //index of current run
+    private int passIndex = 0;                                      //index of current pass
+    private double bestRunFitness = 0.0;                            //best fitness achieved in this simulation
+    private int breakthroughGen = 0;                                //index of generation where best fitness was achieved
+    private int breakthroughRun = 0;                                //index of run where best fitness was achieved
+    private double timer = 0.0;                                     //time since start of the pass
+    private double distance = 0.0;                                  //how much distance car has covered in this pass
+    private double acceptedMinTime = -1.0;                          //how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
+    private Vector3 previousPosition;                               //position of the car in previous frame
 
-    private bool fastForward = false;
+    private bool fastForward = false;                               //whether fast forward function is activated
 
     void Start()
     {
@@ -106,6 +108,7 @@ public class GameController : MonoBehaviour
             bestNetwork = new NeuralNetwork(INPUT_COUNT, layerCount, neuronsInLayer);
         }
 
+        //preparing simulation
         PreGeneration();
         PreRun();
         PrePass();
@@ -116,6 +119,7 @@ public class GameController : MonoBehaviour
     {
         if (Input.GetKeyDown("space"))
         {
+            //fast forward function
             if (fastForward)
             {
                 Time.timeScale = 1.0f;
@@ -166,6 +170,10 @@ public class GameController : MonoBehaviour
             if (collisionDetected)
             {
                 Debug.Log("COLLISION");
+            }
+            if(nextCheckpoint >= checkpoints.Count)
+            {
+                Debug.Log("FINISH");
             }
             NextPass();
             return true;
@@ -239,6 +247,7 @@ public class GameController : MonoBehaviour
         fitnessDeathTimerText.text = String.Format("FIT: {0:0.0}", fitnessDeathTimer);
     }
 
+    //is called after generation is complete
     void PostGeneration()
     {
 
@@ -252,27 +261,27 @@ public class GameController : MonoBehaviour
 
     }
 
+    //called just after starting new generation
     void PreGeneration()
     {
 
+        //creating new neural networks
         List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
-
         for (int i = 0; i < populationSize; i++)
         {
-
             NeuralNetwork newNetwork = NeuralNetwork.Crossover(bestNetwork, bestNetwork);
-
             newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
-            newGeneration.Add(newNetwork);
-
+            newGeneration.Add(newNetwork)
         }
 
+        //swapping generations
         generation = new List<NeuralNetwork>(newGeneration);
 
         runIndex = 0;
 
     }
 
+    //proceed to the next generation
     void NextGeneration()
     {
 
@@ -284,6 +293,7 @@ public class GameController : MonoBehaviour
 
     }
 
+    //called after run is complete
     void PostRun()
     {
 
@@ -292,6 +302,7 @@ public class GameController : MonoBehaviour
         double runMinTime = -1.0;
         double runFitness = 0.0;
 
+        //if mode is Median, we take median pass
         if (runAcceptMode == RunAcceptMode.Median)
         {
             Pass medianPass = passes[(passes.Count - 1) / 2];
@@ -301,6 +312,7 @@ public class GameController : MonoBehaviour
                 runMinTime = medianPass.time;
             }
         }
+        //if it is All, we take the worst pass
         else if (runAcceptMode == RunAcceptMode.All)
         {
             passes.Sort((x, y) => x.fitness.CompareTo(y.fitness));
@@ -339,6 +351,7 @@ public class GameController : MonoBehaviour
 
     }
 
+    //called just after starting new run
     void PreRun()
     {
 
@@ -346,16 +359,20 @@ public class GameController : MonoBehaviour
         NeuralNetwork network = generation[runIndex];
         carObject.GetComponent<CarController>().neuralNetwork = network;
 
+        //list of passes has to be cleared
         passes = new List<Pass>();
 
         passIndex = 0;
 
     }
 
+    //called after completing a pass
     bool PostPass()
     {
 
         //speed and time bonuses
+        //if the car completes the track, it gets time bonus
+        //otherwise, it gets speed bonus
         double speedBonus = 0.0;
         double timeBonus = 0.0;
         if (nextCheckpoint < checkpoints.Count)
@@ -380,19 +397,20 @@ public class GameController : MonoBehaviour
         pass.nextCheckpoint = nextCheckpoint;
         passes.Add(pass);
 
-        //distance bonus (not added to passFitness)
+        //distance bonus (not added to passFitness, used only for debug)
         double distanceBonus = 0.0;
         if (nextCheckpoint < checkpoints.Count)
         {
             float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
             distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
         }
-        //checkpoint bonus (not added to pass fitness)
+        //checkpoint bonus (not added to pass fitness, used only for debug)
         double checkpointBonus = nextCheckpoint * 100.0;
 
         Debug.Log("Pass fitness: " + passFitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + distance / timer);
         Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
 
+        //if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
         if(runAcceptMode == RunAcceptMode.All && passFitness < bestRunFitness)
         {
             return true;
@@ -421,13 +439,13 @@ public class GameController : MonoBehaviour
         carObject.GetComponent<CarController>().ResetQueues();
 
         //randomized rotation
-        //carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.RandBetween(-45, 45));
         carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(passIndex, 0, passCount - 1, randomAngleMin, randomAngleMax));
 
         Debug.Log("Generation " + generationIndex + " Car: " + runIndex + " Pass: " + passIndex + " Max: " + bestRunFitness + " Gen: " + breakthroughGen + " Car: " + breakthroughRun);
 
     }
 
+    //proceed to the next run
     void NextRun()
     {
 
@@ -444,6 +462,8 @@ public class GameController : MonoBehaviour
 
     }
 
+    //proceed to the next pass
+    //notice that run can be aborted early
     void NextPass()
     {
 
