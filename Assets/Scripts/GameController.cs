@@ -337,10 +337,12 @@ public class GameController : MonoBehaviour
             breakthroughRun = runIndex;
 
             //saving best neural network to file
-            String trackName = track.name.Replace(" ", "");
-            String genRunString = "g" + generationIndex + "r" + runIndex;
-            String dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            generation[runIndex].Serialize(saveFolderPath + trackName + "_" + dateString + "_" + genRunString + ".xml");
+            string trackName = track.name.Replace(" ", "");
+            string genRunString = "g" + generationIndex + "r" + runIndex;
+            string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+            string filePath = trackName + "_" + dateString + "_" + genRunString + ".xml";
+            System.IO.Directory.CreateDirectory(saveFolderPath);
+            generation[runIndex].Serialize(saveFolderPath + filePath);
 
         }
 
