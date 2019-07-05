@@ -8,6 +8,7 @@ public class GameController : MonoBehaviour
 {
 
     public const int INPUT_COUNT = 11;              //number of inputs neural network will have
+    public const int OUTPUT_COUNT = 2;              //number of outputs neural network will have
 
     public int layerCount = 1;                      //number of hidden layers neural network will have
     public int neuronsInLayer = 16;                 //number of neurons in hidden layers
@@ -105,7 +106,7 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            bestNetwork = new NeuralNetwork(INPUT_COUNT, layerCount, neuronsInLayer);
+            bestNetwork = new NeuralNetwork(INPUT_COUNT, OUTPUT_COUNT, layerCount, neuronsInLayer);
         }
 
         //preparing simulation
@@ -271,7 +272,7 @@ public class GameController : MonoBehaviour
         {
             NeuralNetwork newNetwork = NeuralNetwork.Crossover(bestNetwork, bestNetwork);
             newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
-            newGeneration.Add(newNetwork)
+            newGeneration.Add(newNetwork);
         }
 
         //swapping generations

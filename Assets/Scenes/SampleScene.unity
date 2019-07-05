@@ -344,7 +344,7 @@ MonoBehaviour:
   checkpointReachDistance: 5
   randomAngleMin: -25
   randomAngleMax: 25
-  runAcceptMode: 1
+  runAcceptMode: 0
   loadNetwork: 0
   carObject: {fileID: 223974226}
   track: {fileID: 1487416292}
