@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using UnityEngine.UI;
-using SFB;
 
 public class GameController : MonoBehaviour
 {
@@ -90,8 +89,6 @@ public class GameController : MonoBehaviour
     void Start()
     {
 
-        StandaloneFileBrowser.OpenFilePanel("Load network", "", "xml", false);
-
         //loading spawn point
         carSpawnPoint = track.Find("Spawn");
 
@@ -102,10 +99,10 @@ public class GameController : MonoBehaviour
             checkpoints.Add(child);
         }
 
-        //initial neural network
-        if (loadNetwork)
+        //loading neural network or creating new one
+        if (StartupSettings.networkFile != "")
         {
-            bestNetwork = NeuralNetwork.Deserialize("network.xml");
+            bestNetwork = NeuralNetwork.Deserialize(StartupSettings.networkFile);
         }
         else
         {
