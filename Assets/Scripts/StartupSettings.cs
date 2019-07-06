@@ -50,8 +50,6 @@ public class StartupSettings : MonoBehaviour
     public void ResetFitnessToggle(bool value)
     {
         resetFitness = value;
-        Debug.Log("Value is: " + value);
-        Debug.Log("resetFitness is now " + resetFitness);
     }
 
     public void StartSimulation()
