@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
 
-    public const int INPUT_COUNT = 11;              //number of inputs neural network will have
+    public const int INPUT_COUNT = 12;              //number of inputs neural network will have
     public const int OUTPUT_COUNT = 2;              //number of outputs neural network will have
 
     public int layerCount = 1;                      //number of hidden layers neural network will have

@@ -103,18 +103,28 @@ public class CarController : MonoBehaviour
         //adding velocity
         NNInputs.Add(rb.velocity.magnitude);
 
+        //adding slip of the front wheels
+        double frontWheelSlip = 0.0;
+        AxleInfo frontAxle = axleInfos[0];
+        WheelHit frontWheelHit;
+        frontAxle.leftWheel.GetGroundHit(out frontWheelHit);
+        frontWheelSlip += frontWheelHit.sidewaysSlip;
+        frontAxle.rightWheel.GetGroundHit(out frontWheelHit);
+        frontWheelSlip += frontWheelHit.sidewaysSlip;
+        NNInputs.Add(frontWheelSlip);
+
         //adding slip of the rear wheels
         double rearWheelsSlip = 0.0;
         AxleInfo rearAxle = axleInfos[1];
-        WheelHit wheelHit;
-        rearAxle.leftWheel.GetGroundHit(out wheelHit);
-        rearWheelsSlip += wheelHit.sidewaysSlip;
-        rearAxle.rightWheel.GetGroundHit(out wheelHit);
-        rearWheelsSlip += wheelHit.sidewaysSlip;
+        WheelHit rearWheelHit;
+        rearAxle.leftWheel.GetGroundHit(out rearWheelHit);
+        rearWheelsSlip += rearWheelHit.sidewaysSlip;
+        rearAxle.rightWheel.GetGroundHit(out rearWheelHit);
+        rearWheelsSlip += rearWheelHit.sidewaysSlip;
         NNInputs.Add(rearWheelsSlip);
 
         //if neural network has less or more inputs then in the input list
-        if(neuralNetwork.inputCount != NNInputs.Count)
+        if (neuralNetwork.inputCount != NNInputs.Count)
         {
             throw new System.Exception("Input lists do not match: NN(" + neuralNetwork.inputCount + ") Inputs(" + NNInputs.Count + ")");
         }
