@@ -28,7 +28,6 @@ public class GameController : MonoBehaviour
         Median
     };
     public RunAcceptMode runAcceptMode;             //determines how fitness of the run is calculated
-    public bool loadNetwork = true;                 //load neural network from file before starting?
 
     public GameObject carObject;                    //GameObject of the car
     public double terminationDelay = 1.0;           //pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time
@@ -37,7 +36,7 @@ public class GameController : MonoBehaviour
     public double distanceBonusWeight = 10.0;       //weight of the distance bonus
     public double speedBonusWeight = 0.01;          //weight of the speed bonus
 
-    public string networksFolderPath = "Networks/";     //folder which neural networks are saved to
+    public string networksFolderPath = "Networks/"; //folder which neural networks are saved to
 
     //UI text
     public Text genRunPassText;
@@ -267,6 +266,44 @@ public class GameController : MonoBehaviour
         fitnessDeathTimerText.text = String.Format("FIT: {0:0.0}", fitnessDeathTimer);
     }
 
+    void CheckBestResult(double runFitness, double runMinTime)
+    {
+        //has to be in here so it will be saved in the file
+        generation[runIndex].fitness = runFitness;
+
+        //updating fitness and best results
+        //if it is same neural network (run 0), result is not accepted, except if it is first update
+        if (runFitness > bestRunFitness && (runIndex > 0 || bestRunFitness == 0.0))
+        {
+
+            //new breakthrough, new breakthough count
+            breakthroughCount++;
+            generation[runIndex].breakthroughCount = breakthroughCount;
+
+            //updating index of best run
+            bestRunFitness = runFitness;
+            breakthroughGen = generationIndex;
+            breakthroughRun = runIndex;
+
+            //saving best neural network to file
+            string trackName = track.name.Replace(" ", "");
+            string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+            string bcString = "bc" + breakthroughCount;
+            string genRunString = "g" + generationIndex + "r" + runIndex;
+            string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".xml";
+            Directory.CreateDirectory(networksFolderPath);
+            generation[runIndex].Serialize(StartupSettings.networksFolderPath + "/" + filePath);
+
+        }
+
+        //updating best time
+        if (runMinTime >= 0.0 && (runMinTime < acceptedMinTime || acceptedMinTime < 0.0))
+        {
+            acceptedMinTime = runMinTime;
+        }
+
+    }
+
     //is called after generation is complete
     void PostGeneration()
     {
@@ -289,6 +326,7 @@ public class GameController : MonoBehaviour
         List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
         for (int i = 0; i < populationSize; i++)
         {
+            //WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
             NeuralNetwork newNetwork = NeuralNetwork.Crossover(bestNetwork, bestNetwork);
             newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
             newGeneration.Add(newNetwork);
@@ -343,40 +381,8 @@ public class GameController : MonoBehaviour
             }
         }
 
-        //has to be in here so it will be saved in the file
-        generation[runIndex].fitness = runFitness;
-
-        //updating fitness and best results
-        //if it is same neural network (run 0), result is not accepted, except if it is first update
-        if (runFitness > bestRunFitness && (runIndex > 0 || bestRunFitness == 0.0))
-        {
-
-            //new breakthrough, new breakthough count
-            breakthroughCount++;
-            generation[runIndex].breakthroughCount = breakthroughCount;
-
-            //updating index of best run
-            bestRunFitness = runFitness;
-            breakthroughGen = generationIndex;
-            breakthroughRun = runIndex;
-
-            //saving best neural network to file
-
-            string trackName = track.name.Replace(" ", "");
-            string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            string bcString = "bc" + breakthroughCount;
-            string genRunString = "g" + generationIndex + "r" + runIndex;
-            string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".xml";
-            Directory.CreateDirectory(networksFolderPath);
-            generation[runIndex].Serialize(StartupSettings.networksFolderPath + "/" + filePath);
-
-        }
-
-        //updating best time
-        if(runMinTime >= 0.0 && (runMinTime < acceptedMinTime || acceptedMinTime < 0.0))
-        {
-            acceptedMinTime = runMinTime;
-        }
+        //check if result of this run is the best one
+        CheckBestResult(runFitness, runMinTime);
 
     }
 

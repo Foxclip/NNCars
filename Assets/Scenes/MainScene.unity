@@ -334,7 +334,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   layerCount: 1
-  neuronsInLayer: 1
+  neuronsInLayer: 2
   populationSize: 10
   passCount: 5
   crossoverPower: 2
@@ -345,14 +345,12 @@ MonoBehaviour:
   randomAngleMin: -25
   randomAngleMax: 25
   runAcceptMode: 0
-  loadNetwork: 0
   carObject: {fileID: 223974226}
-  track: {fileID: 198816096}
   terminationDelay: 1
   terminationSpeed: 0.5
   checkpointBonusWeight: 100
   distanceBonusWeight: 10
-  speedBonusWeight: 0.01
+  speedBonusWeight: 1
   networksFolderPath: Networks/
   genRunPassText: {fileID: 1373539048}
   passFitnessText: {fileID: 1401649692}
