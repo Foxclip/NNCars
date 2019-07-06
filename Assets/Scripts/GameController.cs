@@ -31,7 +31,6 @@ public class GameController : MonoBehaviour
     public bool loadNetwork = true;                 //load neural network from file before starting?
 
     public GameObject carObject;                    //GameObject of the car
-    public Transform track;                         //transform of the track
     public double terminationDelay = 1.0;           //pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time
     public double terminationSpeed = 0.2;           //what speed is too low
     public double checkpointBonusWeight = 100.0;    //weight of the checkpoint bonus
@@ -68,6 +67,7 @@ public class GameController : MonoBehaviour
         public double nextCheckpoint;
     };
 
+    private Transform track;                                        //transform of the track
     private Transform carSpawnPoint;                                //where car will be placed before strting a pass
     private List<Transform> checkpoints = new List<Transform>();    //list of all checkpoints in the track
     private NeuralNetwork bestNetwork;                              //best result of the simulation
@@ -91,6 +91,15 @@ public class GameController : MonoBehaviour
 
     void Start()
     {
+
+        //loading track
+        Transform tracksParent = GameObject.Find("Tracks").transform;
+        foreach(Transform t in tracksParent)
+        {
+            t.gameObject.SetActive(false);
+        }
+        track = tracksParent.GetChild(StartupSettings.trackIndex);
+        track.gameObject.SetActive(true);
 
         //loading spawn point
         carSpawnPoint = track.Find("Spawn");

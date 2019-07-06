@@ -353,7 +353,7 @@ MonoBehaviour:
   checkpointBonusWeight: 100
   distanceBonusWeight: 10
   speedBonusWeight: 0.01
-  saveFolderPath: Networks/
+  networksFolderPath: Networks/
   genRunPassText: {fileID: 1373539048}
   passFitnessText: {fileID: 1401649692}
   maxFitnessText: {fileID: 1783081641}
@@ -5494,7 +5494,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1681367095}
   m_Layer: 0
-  m_Name: Track
+  m_Name: Long Track
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
