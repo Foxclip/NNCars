@@ -338,7 +338,8 @@ public class GameController : MonoBehaviour
         generation[runIndex].fitness = runFitness;
 
         //updating fitness and best results
-        if (runFitness > bestRunFitness)
+        //if it is same neural network (run 0), result is not accepted, except if it is first update
+        if (runFitness > bestRunFitness && (runIndex > 0 || bestRunFitness == 0.0))
         {
 
             //new breakthrough, new breakthough count
@@ -353,9 +354,10 @@ public class GameController : MonoBehaviour
             //saving best neural network to file
 
             string trackName = track.name.Replace(" ", "");
-            string genRunBrString = "g" + generationIndex + "r" + runIndex + "bc" + breakthroughCount;
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            string filePath = trackName + "_" + dateString + "_" + genRunBrString + ".xml";
+            string genRunBrString = "g" + generationIndex + "r" + runIndex;
+            string bcString = "bc" + breakthroughCount;
+            string filePath = trackName + "_" + dateString + "_" + genRunBrString + "_" + bcString + ".xml";
             generation[runIndex].Serialize(StartupSettings.networksFolderPath + "/" + filePath);
 
         }
