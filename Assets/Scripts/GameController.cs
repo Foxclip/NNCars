@@ -355,9 +355,10 @@ public class GameController : MonoBehaviour
 
             string trackName = track.name.Replace(" ", "");
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            string genRunBrString = "g" + generationIndex + "r" + runIndex;
             string bcString = "bc" + breakthroughCount;
-            string filePath = trackName + "_" + dateString + "_" + genRunBrString + "_" + bcString + ".xml";
+            string genRunString = "g" + generationIndex + "r" + runIndex;
+            string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".xml";
+            Directory.CreateDirectory(networksFolderPath);
             generation[runIndex].Serialize(StartupSettings.networksFolderPath + "/" + filePath);
 
         }
