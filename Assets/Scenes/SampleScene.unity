@@ -334,7 +334,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   layerCount: 1
-  neuronsInLayer: 8
+  neuronsInLayer: 1
   populationSize: 10
   passCount: 5
   crossoverPower: 2

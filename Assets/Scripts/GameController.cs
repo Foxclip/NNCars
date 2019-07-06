@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using UnityEngine.UI;
+using SFB;
 
 public class GameController : MonoBehaviour
 {
@@ -88,6 +89,8 @@ public class GameController : MonoBehaviour
 
     void Start()
     {
+
+        StandaloneFileBrowser.OpenFilePanel("Load network", "", "xml", false);
 
         //loading spawn point
         carSpawnPoint = track.Find("Spawn");
