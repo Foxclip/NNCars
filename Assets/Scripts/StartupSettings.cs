@@ -9,7 +9,7 @@ using SFB;
 public class StartupSettings : MonoBehaviour
 {
 
-    public Text OpenFileText;
+    public Text openFileText;
 
     public static string networkFile = "";
 
@@ -25,18 +25,33 @@ public class StartupSettings : MonoBehaviour
 
     public void SelectNetworkFile()
     {
-        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath), "xml", false);
+
+        //path to the executable
+        string executableDirectory = Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath);
+        string initialDirectory = executableDirectory;
+
+        //if there is no "Networks" folder near the executable, create it if possible
+        try
+        {
+            Directory.CreateDirectory(executableDirectory + "\\Networks");
+            initialDirectory += "\\Networks";
+        }
+        catch (System.UnauthorizedAccessException) { }
+
+        //open file dialog
+        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", initialDirectory, "xml", false);
         if(fileList.Length > 0)
         {
             networkFile = fileList[0];
-            OpenFileText.text = Path.GetFileName(networkFile);
+            openFileText.text = Path.GetFileName(networkFile);
         }
+
     }
 
     public void ClearNetworkFile()
     {
         networkFile = "";
-        OpenFileText.text = "<none>";
+        openFileText.text = "<none>";
     }
 
     public void StartSimulation()
