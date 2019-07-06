@@ -9,9 +9,11 @@ using SFB;
 public class StartupSettings : MonoBehaviour
 {
 
-    public Text openFileText;
+    public static string networksFolderPath = "./Networks";    //path to folder neural networks will be saved to
+    public Text openFileText;                                   //text containing filename of neural network
 
-    public static string networkFile = "";
+    public static string networkFile = "";                      //neural network will be loaded from this file
+    public static bool resetFitness = false;                    //whether fitness of loaded neural network will be reset
 
     void Start()
     {
@@ -26,20 +28,11 @@ public class StartupSettings : MonoBehaviour
     public void SelectNetworkFile()
     {
 
-        //path to the executable
-        string executableDirectory = Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath);
-        string initialDirectory = executableDirectory;
-
-        //if there is no "Networks" folder near the executable, create it if possible
-        try
-        {
-            Directory.CreateDirectory(executableDirectory + "\\Networks");
-            initialDirectory += "\\Networks";
-        }
-        catch (System.UnauthorizedAccessException) { }
+        //if there is no "Networks" folder, create it
+        Directory.CreateDirectory(networksFolderPath);
 
         //open file dialog
-        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", initialDirectory, "xml", false);
+        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", networksFolderPath, "xml", false);
         if(fileList.Length > 0)
         {
             networkFile = fileList[0];
@@ -52,6 +45,13 @@ public class StartupSettings : MonoBehaviour
     {
         networkFile = "";
         openFileText.text = "<none>";
+    }
+
+    public void ResetFitnessToggle(bool value)
+    {
+        resetFitness = value;
+        Debug.Log("Value is: " + value);
+        Debug.Log("resetFitness is now " + resetFitness);
     }
 
     public void StartSimulation()

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.IO;
 using UnityEngine.UI;
 
 public class GameController : MonoBehaviour
@@ -37,7 +38,7 @@ public class GameController : MonoBehaviour
     public double distanceBonusWeight = 10.0;       //weight of the distance bonus
     public double speedBonusWeight = 0.01;          //weight of the speed bonus
 
-    public string saveFolderPath = "Networks/";     //folder which neural networks are saved to
+    public string networksFolderPath = "Networks/";     //folder which neural networks are saved to
 
     //UI text
     public Text genRunPassText;
@@ -45,6 +46,7 @@ public class GameController : MonoBehaviour
     public Text maxFitnessText;
     public Text bestCarText;
     public Text minTimeText;
+    public Text breakthroughCountText;
     public Text timeText;
     public Text speedDeathTimerText;
     public Text fitnessDeathTimerText;
@@ -83,6 +85,7 @@ public class GameController : MonoBehaviour
     private double distance = 0.0;                                  //how much distance car has covered in this pass
     private double acceptedMinTime = -1.0;                          //how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
     private Vector3 previousPosition;                               //position of the car in previous frame
+    private int breakthroughCount = 0;                              //how much fitness improvements happened with this neural network
 
     private bool fastForward = false;                               //whether fast forward function is activated
 
@@ -103,11 +106,17 @@ public class GameController : MonoBehaviour
         if (StartupSettings.networkFile != "")
         {
             bestNetwork = NeuralNetwork.Deserialize(StartupSettings.networkFile);
+            breakthroughCount = bestNetwork.breakthroughCount;
+            if (!StartupSettings.resetFitness)
+            {
+                bestRunFitness = bestNetwork.fitness;
+            }
         }
         else
         {
             bestNetwork = new NeuralNetwork(INPUT_COUNT, OUTPUT_COUNT, layerCount, neuronsInLayer);
         }
+
 
         //preparing simulation
         PreGeneration();
@@ -243,6 +252,7 @@ public class GameController : MonoBehaviour
         maxFitnessText.text = "MAX FITNESS: " + bestRunFitness;
         bestCarText.text = "BEST: GEN " + breakthroughGen + " RUN " + breakthroughRun;
         minTimeText.text = "MIN TIME: " + acceptedMinTime;
+        breakthroughCountText.text = "BREAKTHROUGHS: " + breakthroughCount;
         timeText.text = "TIME: " + timer;
         speedDeathTimerText.text = String.Format("SPD: {0:0.0}", speedDeathTimer);
         fitnessDeathTimerText.text = String.Format("FIT: {0:0.0}", fitnessDeathTimer);
@@ -331,18 +341,22 @@ public class GameController : MonoBehaviour
         if (runFitness > bestRunFitness)
         {
 
+            //new breakthrough, new breakthough count
+            breakthroughCount++;
+            generation[runIndex].breakthroughCount = breakthroughCount;
+
             //updating index of best run
             bestRunFitness = runFitness;
             breakthroughGen = generationIndex;
             breakthroughRun = runIndex;
 
             //saving best neural network to file
+
             string trackName = track.name.Replace(" ", "");
-            string genRunString = "g" + generationIndex + "r" + runIndex;
+            string genRunBrString = "g" + generationIndex + "r" + runIndex + "bc" + breakthroughCount;
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            string filePath = trackName + "_" + dateString + "_" + genRunString + ".xml";
-            System.IO.Directory.CreateDirectory(saveFolderPath);
-            generation[runIndex].Serialize(saveFolderPath + filePath);
+            string filePath = trackName + "_" + dateString + "_" + genRunBrString + ".xml";
+            generation[runIndex].Serialize(StartupSettings.networksFolderPath + "/" + filePath);
 
         }
 

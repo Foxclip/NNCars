@@ -182,6 +182,8 @@ public class NeuralNetwork
     [DataMember]
     public double fitness = 0;
     [DataMember]
+    public int breakthroughCount = 0;
+    [DataMember]
     public List<Neuron> allNeurons = new List<Neuron>();
     [DataMember]
     private List<Neuron> inputNeurons = new List<Neuron>();
