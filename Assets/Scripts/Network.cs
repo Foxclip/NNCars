@@ -518,6 +518,10 @@ public class NeuralNetwork
         //saving connections between neurons
         foreach (Neuron neuron in allNeurons)
         {
+            if(neuron.inputLinks.Count == 0)
+            {
+                continue;
+            }
             writer.WriteLine(neuron.id);
             writer.Write("    ");
             foreach (Neuron linkedNeuron in neuron.inputLinks)
