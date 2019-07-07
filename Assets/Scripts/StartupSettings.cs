@@ -33,7 +33,7 @@ public class StartupSettings : MonoBehaviour
         Directory.CreateDirectory(networksFolderPath);
 
         //open file dialog
-        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", networksFolderPath, "xml", false);
+        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", networksFolderPath, "txt", false);
         if(fileList.Length > 0)
         {
             networkFile = fileList[0];

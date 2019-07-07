@@ -113,7 +113,7 @@ public class GameController : MonoBehaviour
         //loading neural network or creating new one
         if (StartupSettings.networkFile != "")
         {
-            bestNetwork = NeuralNetwork.Deserialize(StartupSettings.networkFile);
+            bestNetwork = NeuralNetwork.LoadFromFile(StartupSettings.networkFile);
             breakthroughCount = bestNetwork.breakthroughCount;
             if (!StartupSettings.resetFitness)
             {
@@ -290,9 +290,9 @@ public class GameController : MonoBehaviour
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
             string bcString = "bc" + breakthroughCount;
             string genRunString = "g" + generationIndex + "r" + runIndex;
-            string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".xml";
+            string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".txt";
             Directory.CreateDirectory(networksFolderPath);
-            generation[runIndex].Serialize(StartupSettings.networksFolderPath + "/" + filePath);
+            generation[runIndex].SaveToFile(StartupSettings.networksFolderPath + "/" + filePath);
 
         }
 
