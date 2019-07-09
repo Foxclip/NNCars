@@ -4,29 +4,34 @@ using System.Collections.Generic;
 
 public class CarController : MonoBehaviour
 {
-    public bool manualControl = false;          //if by some reason manual control is needed
-    public List<AxleInfo> axleInfos;            //the information about each individual axle
-    public float maxMotorTorque = 1000.0f;      // maximum torque the motor can apply to wheel
-    public float maxSteeringAngle = 45.0f;      // maximum steer angle the wheel can have
-    public GameObject carSpawnPoint;            //place where car spawns every pass
-    public Transform[] rayOrigins;              //raycasts are made in these directions
-    public GameObject gameControllerObject;     //GameController object
-    public int steeringSmoothing = 1;           //how much steering is smoothed out, needed so steering will respond slower
-    public double inputDelay = 0.1;             //inputs are fed to neural network with this delay
-    public double outputDelay = 0.1;            //outputs are sent to the wheels, but they get there after this delay
-    public bool averagedInput = true;           //all values in the input queue are averaged, setting this to true will lead to smoother response of the neural network
+
+    //names of inputs and outputs of the neural network
+    public List<string> registeredInputs = new List<string> { "RayLeftFront45", "RayRightFront45", "Speed", "FrontSlip", "RearSlip" };
+    public List<string> registeredOutputs = new List<string> { "motor", "steering" };
+
+    public bool manualControl = false;                      //if by some reason manual keyboard control is needed
+    public List<AxleInfo> axleInfos;                        //the information about each individual axle
+    public float maxMotorTorque = 1000.0f;                  // maximum torque the motor can apply to wheel
+    public float maxSteeringAngle = 45.0f;                  // maximum steer angle the wheel can have
+    public GameObject carSpawnPoint;                        //place where car spawns every pass
+    public Transform[] rayOrigins;                          //raycasts are made in these directions
+    public GameObject gameControllerObject;                 //GameController object
+    public int steeringSmoothing = 1;                       //how much steering is smoothed out, needed so steering will respond slower
+    public double inputDelay = 0.1;                         //inputs are fed to neural network with this delay
+    public double outputDelay = 0.1;                        //outputs are sent to the wheels, but they get there after this delay
+    public bool averagedInput = true;                       //all values in the input queue are averaged, setting this to true will lead to smoother response of the neural network
 
     [HideInInspector]
-    public NeuralNetwork neuralNetwork;         //current neural network assigned to the car
+    public NeuralNetwork neuralNetwork;                     //current neural network assigned to the car
 
-    private const double FPS = 60.0;            //frames per second, is used to calculate size of input/output queues
-    private double inputSteps;                  //how long input queue is
-    private double outputSteps;                 //how long ouput queue is
+    private const double FPS = 60.0;                        //frames per second, is used to calculate size of input/output queues
+    private double inputSteps;                              //how long input queue is
+    private double outputSteps;                             //how long ouput queue is
 
-    private GameController gameController;      //GameController script
-    private Rigidbody rb;                       //Rigidbody of the car
-    private Queue<List<double>> inputQueue;     //all inputs are going through this queue
-    private Queue<List<double>> outputQueue;    //all outputs are going through this queue
+    private GameController gameController;                  //GameController script
+    private Rigidbody rb;                                   //Rigidbody of the car
+    private Queue<Dictionary<string, double>> inputQueue;   //all inputs are going through this queue
+    private Queue<Dictionary<string, double>> outputQueue;  //all outputs are going through this queue
 
     public void Start()
     {
@@ -51,25 +56,25 @@ public class CarController : MonoBehaviour
     public void ResetQueues()
     {
 
-        inputQueue = new Queue<List<double>>();
+        inputQueue = new Queue<Dictionary<string, double>>();
         for (int list_i = 0; list_i < inputSteps; list_i++)
         {
-            List<double> emptyInput = new List<double>();
-            for (int input_i = 0; input_i < GameController.INPUT_COUNT; input_i++)
+            Dictionary<string, double> emptyInput = new Dictionary<string, double>();
+            foreach (string inputName in registeredInputs)
             {
-                emptyInput.Add(0.0);
+                emptyInput.Add(inputName, 0.0);
             }
             inputQueue.Enqueue(emptyInput);
 
         }
 
-        outputQueue = new Queue<List<double>>();
+        outputQueue = new Queue<Dictionary<string, double>>();
         for (int list_i = 0; list_i < outputSteps; list_i++)
         {
-            List<double> emptyOutput = new List<double>();
-            for (int output_i = 0; output_i < 2; output_i++)
+            Dictionary<string, double> emptyOutput = new Dictionary<string, double>();
+            foreach (string outputName in registeredOutputs)
             {
-                emptyOutput.Add(0.0);
+                emptyOutput.Add(outputName, 0.0);
             }
             outputQueue.Enqueue(emptyOutput);
 
@@ -84,7 +89,7 @@ public class CarController : MonoBehaviour
         rb.isKinematic = false;
 
         //inputs which will be fed to neural network
-        List<double> NNInputs = new List<double>();
+        Dictionary<string, double> NNInputs = new Dictionary<string, double>();
 
         //adding raycast lengths to list of inputs
         foreach(Transform rayOrigin in rayOrigins)
@@ -92,16 +97,16 @@ public class CarController : MonoBehaviour
             RaycastHit hit;
             if(Physics.Raycast(rayOrigin.position, rayOrigin.forward, out hit))
             {
-                NNInputs.Add(hit.distance);
+                NNInputs.Add(rayOrigin.name.Replace(" ", ""), hit.distance);
                 Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
             } else
             {
-                NNInputs.Add(-1.0);
+                NNInputs.Add(rayOrigin.name.Replace(" ", ""), - 1.0);
             }
         }
 
         //adding velocity
-        NNInputs.Add(rb.velocity.magnitude);
+        NNInputs.Add("Speed", rb.velocity.magnitude);
 
         //adding slip of the front wheels
         double frontWheelSlip = 0.0;
@@ -111,7 +116,7 @@ public class CarController : MonoBehaviour
         frontWheelSlip += frontWheelHit.sidewaysSlip;
         frontAxle.rightWheel.GetGroundHit(out frontWheelHit);
         frontWheelSlip += frontWheelHit.sidewaysSlip;
-        NNInputs.Add(frontWheelSlip);
+        NNInputs.Add("FrontSlip", frontWheelSlip);
 
         //adding slip of the rear wheels
         double rearWheelsSlip = 0.0;
@@ -121,31 +126,33 @@ public class CarController : MonoBehaviour
         rearWheelsSlip += rearWheelHit.sidewaysSlip;
         rearAxle.rightWheel.GetGroundHit(out rearWheelHit);
         rearWheelsSlip += rearWheelHit.sidewaysSlip;
-        NNInputs.Add(rearWheelsSlip);
-
-        //if neural network has less or more inputs then in the input list
-        if (neuralNetwork.inputCount != NNInputs.Count)
-        {
-            throw new System.Exception("Input lists do not match: NN(" + neuralNetwork.inputCount + ") Inputs(" + NNInputs.Count + ")");
-        }
+        NNInputs.Add("RearSlip", rearWheelsSlip);
 
         //inputs which come now will be put to the back of the input queue
         inputQueue.Enqueue(NNInputs);
-        //and this is the list for the inputs which will be fed to the neural network now
-        List<double> currentInputs = new List<double>();
-        if(averagedInput)
+        //and this is the dictionary for the inputs which will be fed to the neural network now
+        Dictionary<string, double> currentInputs = new Dictionary<string, double>();
+        if (averagedInput)
         {
-            //averaging all inputs available in the input queue
-            List<double>[] inputs = inputQueue.ToArray();
-            for(int input_i = 0; input_i < inputs[0].Count; input_i++)
+            //converting queue to array
+            Dictionary<string, double>[] inputs = inputQueue.ToArray();
+            //dictionary for results
+            foreach (string inputName in registeredInputs)
             {
-                double sum = 0.0;
-                for(int list_i = 0; list_i < inputs.Length; list_i++)
+                currentInputs.Add(inputName, 0.0);
+            }
+            //summing input values
+            foreach (Dictionary<string, double> input in inputs)
+            {
+                foreach (string inputName in registeredInputs)
                 {
-                    sum += inputs[list_i][input_i];
+                    currentInputs[inputName] += input[inputName];
                 }
-                sum /= inputs.Length;
-                currentInputs.Add(sum);
+            }
+            //dividing by length to find average
+            foreach (string inputName in registeredInputs)
+            {
+                currentInputs[inputName] /= inputs.Length;
             }
             inputQueue.Dequeue();
         }
@@ -156,13 +163,13 @@ public class CarController : MonoBehaviour
         }
 
         //feeding inputs to the neural network
-        List <double> neuralNetworkOutput = neuralNetwork.Feedforward(currentInputs);
+        Dictionary<string, double> neuralNetworkOutput = neuralNetwork.Feedforward(currentInputs);
 
         //adding output of the neural network to the back of the output queue
         outputQueue.Enqueue(neuralNetworkOutput);
 
         //curent outputs are taken from the back of the output queue
-        List<double> currentOutputs = outputQueue.Dequeue();
+        Dictionary<string, double> currentOutputs = outputQueue.Dequeue();
 
         //choosing between manual and automatic control
         float motor = 0.0f;
@@ -174,8 +181,8 @@ public class CarController : MonoBehaviour
         }
         else
         {
-            motor = maxMotorTorque * (float)currentOutputs[0];
-            steering = maxSteeringAngle * (float)currentOutputs[1];
+            motor = maxMotorTorque * (float)currentOutputs["motor"];
+            steering = maxSteeringAngle * (float)currentOutputs["steering"];
         }
 
         //setting values to the wheels

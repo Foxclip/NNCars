@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Runtime.Serialization;
 using System.Xml;
 using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 public enum NeuronType
 {
@@ -15,34 +16,55 @@ public enum NeuronType
     HiddenNeuron
 }
 
-[Serializable]
-public class WrongNeuronTypeException : Exception
+public class NeuralNetworkException : Exception
 {
-    public WrongNeuronTypeException() { }
-    public WrongNeuronTypeException(string message) : base(message) { }
-    public WrongNeuronTypeException(string message, Exception innerException) : base(message, innerException) { }
+    public NeuralNetworkException() { }
+    public NeuralNetworkException(string message) : base(message) { }
+    public NeuralNetworkException(string message, Exception innerException) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Represents input link of a neuron.
+/// Needed because weights are tied to specific neurons.
+/// </summary>
+[Serializable]
+[DataContract(Name = "InputLink")]
+public class InputLink
+{
+
+    public InputLink(Neuron link, double weight)
+    {
+        this.link = link;
+        this.weight = weight;
+    }
+
+    [DataMember]
+    public Neuron link;
+    [DataMember]
+    public double weight;
 }
 
 /// <summary>
 /// Class for neuron in neural network.
 /// </summary>
+[Serializable]
 [DataContract(Name = "Neuron", IsReference = true)]
 public class Neuron
 {
+
+    public double value = 0;                                    //used by other neurons connected to this one
+    public int layerId = 0;                                     //id of layer in neural network, is assigned when sorting
+
     [DataMember]
     public int id = 0;
     [DataMember]
     public string name;
     [DataMember]
-    public NeuronType type;                                 //whether is is input, output or hidden neuron
+    public NeuronType type;                                     //whether is is input, output or hidden neuron
     [DataMember]
-    public double value = 0;
-    [DataMember]
-    public List<Neuron> inputLinks = new List<Neuron>();
+    public List<InputLink> inputLinks = new List<InputLink>();
     [DataMember]
     public List<Neuron> outputLinks = new List<Neuron>();
-    [DataMember]
-    public List<double> weights = new List<double>();
     [DataMember]
     public double bias;
 
@@ -51,20 +73,16 @@ public class Neuron
     /// </summary>
     public Neuron() { }
 
-    public Neuron(int id, string name, NeuronType type, List<double> weights = null, double bias = 0)
+    public Neuron(int id, string name, NeuronType type, double bias = 0)
     {
         this.id = id;
         this.name = name;
         this.type = type;
-        if (weights != null)
-        {
-            this.weights = new List<double>(weights);
-        }
         this.bias = bias;
     }
 
     /// <summary>
-    /// Calculates values of all neurons.
+    /// Calculates value of the neuron.
     /// </summary>
     public void Feedforward()
     {
@@ -75,9 +93,9 @@ public class Neuron
             return;
         }
 
-        //collecting inputs
+        //collecting inputs from connected neurons
         List<double> inputs = new List<double>();
-        foreach (Neuron neuron in inputLinks)
+        foreach (Neuron neuron in GetIncomingNeurons())
         {
             inputs.Add(neuron.value);
         }
@@ -86,14 +104,16 @@ public class Neuron
         double total = 0;
         for (int i = 0; i < inputs.Count; i++)
         {
-            total += inputs[i] * weights[i];
+            total += inputs[i] * inputLinks[i].weight;
         }
 
+        //adding bias
         total += bias;
 
         //activation function
         double output = Math.Tanh(total);
 
+        //result is stored in the neuron, so other neurons can use it
         value = output;
 
     }
@@ -109,14 +129,14 @@ public class Neuron
         //input neurons don't have weights and biases, so there is nothing to mutate
         if (type == NeuronType.InputNeuron)
         {
-            throw new WrongNeuronTypeException("Cannot mutate InputNeuron");
+            throw new NeuralNetworkException("Cannot mutate InputNeuron");
         }
 
         //mutating weights
-        for (int i = 0; i < weights.Count; i++)
+        for (int i = 0; i < inputLinks.Count; i++)
         {
             double weightMutationRate = Math.Pow(Utils.Rand(), power) * maxMutation;
-            weights[i] += Utils.RandBetween(-weightMutationRate, weightMutationRate);
+            inputLinks[i].weight += Utils.RandBetween(-weightMutationRate, weightMutationRate);
         }
 
         //mutating bias
@@ -126,17 +146,53 @@ public class Neuron
     }
 
     /// <summary>
-    /// Does crossover of two neurons and saves result in another neuron.
+    /// Returns all weights of a neuron.
     /// </summary>
-    /// <param name="neuron">Result is saved in this neuron</param>
-    /// <param name="parent1">First parent</param>
-    /// <param name="parent2">Second parent</param>
-    public static void NeuronCrossover(Neuron neuron, Neuron parent1, Neuron parent2)
+    public List<double> GetWeights()
     {
-        List<double> averagedWeights = Utils.ListsAverage(parent1.weights, parent2.weights);
-        double averagedBias = (parent1.bias + parent2.bias) / 2.0;
-        neuron.weights = averagedWeights;
-        neuron.bias = averagedBias;
+        return (from inputLink in inputLinks select inputLink.weight).ToList();
+    }
+
+    /// <summary>
+    /// Sets weights of a neuron.
+    /// </summary>
+    /// <param name="newWeights">List of new weights.</param>
+    public void SetWeights(List<double> newWeights)
+    {
+        for (int i = 0; i < newWeights.Count; i++)
+        {
+            inputLinks[i].weight = newWeights[i];
+        }
+    }
+
+    /// <summary>
+    /// Set specific weight of a neuron.
+    /// </summary>
+    /// <param name="name">Name of neuron tied to the weight.</param>
+    /// <param name="weight">New weight.</param>
+    public void SetWeight(string name, double weight)
+    {
+        List<InputLink> matchingInputLinks = inputLinks.FindAll((x) => x.link.name == name);
+        if (matchingInputLinks.Count == 0)
+        {
+            throw new NeuralNetworkException(String.Format("Input link with name {0} not found", name));
+        }
+        else if (matchingInputLinks.Count > 1)
+        {
+            throw new NeuralNetworkException(String.Format("Found multiple input links with name {0}", name));
+        }
+        else
+        {
+            matchingInputLinks[0].weight = weight;
+        }
+    }
+
+    /// <summary>
+    /// Returns list of all neurons which are feeding values to this neuron.
+    /// </summary>
+    public List<Neuron> GetIncomingNeurons()
+    {
+        return (from inputLink in inputLinks select inputLink.link).ToList();
     }
 
     /// <summary>
@@ -150,16 +206,16 @@ public class Neuron
             return String.Format("{0} -> {1}", name, value);
         }
         string weightsString = "[";
-        for (int i = 0; i < weights.Count; i++)
+        for (int i = 0; i < inputLinks.Count; i++)
         {
-            weightsString += weights[i].ToString();
-            if (i < weights.Count - 1)
+            weightsString += inputLinks[i].weight.ToString();
+            if (i < inputLinks.Count - 1)
             {
                 weightsString += " ";
             }
         }
         weightsString += "]";
-        return String.Format("{0}-{1}({2}) -> {3}", name, weightsString, bias, value);
+        return String.Format("{0} {1}({2}) -> {3}", name, weightsString, bias, value);
     }
 
 }
@@ -167,18 +223,13 @@ public class Neuron
 /// <summary>
 /// Class for neural network.
 /// </summary>
+[Serializable]
 [DataContract(Name = "NeuralNetwork")]
 public class NeuralNetwork
 {
 
-    [DataMember]
-    public int inputCount;
-    [DataMember]
-    public int outputCount;
-    [DataMember]
-    private int hiddenLayers;
-    [DataMember]
-    private int neuronsInLayer;
+    public List<List<Neuron>> layers = new List<List<Neuron>>();    //neurons sorted in layers
+
     [DataMember]
     private static int networkIdCounter = 0;
     [DataMember]
@@ -193,12 +244,6 @@ public class NeuralNetwork
     public int breakthroughCount = 0;
     [DataMember]
     public List<Neuron> allNeurons = new List<Neuron>();
-    [DataMember]
-    private List<Neuron> inputNeurons = new List<Neuron>();
-    [DataMember]
-    public List<Neuron> hiddenNeurons = new List<Neuron>();
-    [DataMember]
-    public List<Neuron> outputNeurons = new List<Neuron>();
 
     /// <summary>
     /// Parameterless contructor, needed for loading from file
@@ -209,28 +254,24 @@ public class NeuralNetwork
     /// <param name="outputCount">Number of output neurons.</param>
     /// <param name="hiddenLayers">Number of hidden layers.</param>
     /// <param name="neuronsInLayer">Numbers of neurons in each hidden layer.</param>
-    public NeuralNetwork(int inputCount, int outputCount, int hiddenLayers, int neuronsInLayer)
+    public NeuralNetwork(List<string> inputNames, List<string> outputNames, int hiddenLayers, int neuronsInLayer)
     {
-
-        //assigning parameters
-        this.inputCount = inputCount;
-        this.outputCount = outputCount;
-        this.hiddenLayers = hiddenLayers;
-        this.neuronsInLayer = neuronsInLayer;
 
         //assigning id
         id = networkIdCounter;
         networkIdCounter++;
 
         //adding input neurons
-        for (int i = 0; i < inputCount; i++)
+        List<Neuron> temporaryInputNeuronList = new List<Neuron>();
+        foreach (string name in inputNames)
         {
-            AddInputNeuron("i" + i);
+            temporaryInputNeuronList.Add(AddInputNeuron(name));
         }
 
         //adding hidden neurons and connecting them between each other and input neurons
         List<Neuron> previousLayer = new List<Neuron>();
         List<Neuron> currentLayer = new List<Neuron>();
+        List<Neuron> temporaryHiddenNeuronList = new List<Neuron>();
         for (int layer_i = 0; layer_i < hiddenLayers; layer_i++)
         {
 
@@ -240,15 +281,16 @@ public class NeuralNetwork
             for (int neuron_i = 0; neuron_i < neuronsInLayer; neuron_i++)
             {
                 Neuron newNeuron = AddHiddenNeuron(String.Format("h{0}:{1}", layer_i, neuron_i));
+                temporaryHiddenNeuronList.Add(newNeuron);
                 currentLayer.Add(newNeuron);
             }
 
             //connecting first hidden layer to input neurons
             if (layer_i == 0)
             {
-                foreach (Neuron inputNeuron in inputNeurons)
+                foreach (Neuron inputNeuron in temporaryInputNeuronList)
                 {
-                    foreach (Neuron hiddenNeuron in hiddenNeurons)
+                    foreach (Neuron hiddenNeuron in temporaryHiddenNeuronList)
                     {
                         Connect(inputNeuron, hiddenNeuron);
                     }
@@ -273,20 +315,20 @@ public class NeuralNetwork
         }
 
         //adding output neurons
-        for (int i = 0; i < outputCount; i++)
+        List<Neuron> temporaryOutputNeuronList = new List<Neuron>();
+        foreach (string name in outputNames)
         {
-            AddOutputNeuron("o" + i);
+            temporaryOutputNeuronList.Add(AddOutputNeuron(name));
         }
 
         //connecting output neurons to last layer of hidden neurons
         foreach (Neuron hiddenNeuron in currentLayer)
         {
-            foreach (Neuron outputNeuron in outputNeurons)
+            foreach (Neuron outputNeuron in temporaryOutputNeuronList)
             {
                 Connect(hiddenNeuron, outputNeuron);
             }
         }
-
 
     }
 
@@ -295,36 +337,66 @@ public class NeuralNetwork
     /// </summary>
     /// <param name="neuron1">First neuron, cannot be OutputNeuron.</param>
     /// <param name="neuron2">Second neuron, cannot be InputNeuron.</param>
-    /// <param name="addWeight">Add weight to second neuron.</param>
-    private void Connect(Neuron neuron1, Neuron neuron2, bool addWeight = true)
+    /// <returns>InputLink of seocnd neuron.</returns>
+    private InputLink Connect(Neuron neuron1, Neuron neuron2)
     {
+
         if (neuron1.type == NeuronType.OutputNeuron)
         {
-            throw new WrongNeuronTypeException("Output neuron cannot have output links");
+            throw new NeuralNetworkException("Output neuron cannot have output links");
         }
         if (neuron2.type == NeuronType.InputNeuron)
         {
-            throw new WrongNeuronTypeException("Input neuron cannot have input links");
+            throw new NeuralNetworkException("Input neuron cannot have input links");
         }
-        if (addWeight)
-        {
-            neuron2.weights.Add(0);
-        }
-        neuron2.inputLinks.Add(neuron1);
+
+        InputLink newInputLink = new InputLink(neuron1, 0.0);
+        neuron2.inputLinks.Add(newInputLink);
         neuron1.outputLinks.Add(neuron2);
+
+        //since network structure changed, neurons have to be sorted
+        SortNeurons();
+
+        return newInputLink;
+
     }
 
     /// <summary>
-    /// Adds new input neuron to the neural network.
+    /// Adds new input neuron to the neural network (and, optionally, connect it to the next layer).
     /// </summary>
     /// <param name="name">Name of the neuron.</param>
+    /// <param name="connect">If new neuron should be connected to hidden neurons right away.</param>
     /// <returns>Created neuron.</returns>
-    private Neuron AddInputNeuron(string name)
+    public Neuron AddInputNeuron(string name, bool connect = false)
     {
+
+        //creating new neuron
         Neuron newNeuron = new Neuron(allNeurons.Count, name, NeuronType.InputNeuron);
-        inputNeurons.Add(newNeuron);
+
+        //adding it to list
         allNeurons.Add(newNeuron);
+
+        //connecting it to the next layer
+        if (connect)
+        {
+
+            if (layers.Count < 2)
+            {
+                throw new NeuralNetworkException("New input neuron can be connected only if there are at least 2 layers (including input and output layers) in the network");
+            }
+            foreach (Neuron hiddenNeuron in layers[1])
+            {
+                Connect(newNeuron, hiddenNeuron);
+            }
+
+
+        }
+
+        //since network structure changed, neurons have to be sorted
+        SortNeurons();
+
         return newNeuron;
+
     }
 
     /// <summary>
@@ -334,10 +406,15 @@ public class NeuralNetwork
     /// <returns>Created neuron.</returns>
     private Neuron AddHiddenNeuron(string name)
     {
+
         Neuron newNeuron = new Neuron(allNeurons.Count, name, NeuronType.HiddenNeuron);
-        hiddenNeurons.Add(newNeuron);
         allNeurons.Add(newNeuron);
+
+        //since network structure changed, neurons have to be sorted
+        SortNeurons();
+
         return newNeuron;
+
     }
 
     /// <summary>
@@ -347,10 +424,94 @@ public class NeuralNetwork
     /// <returns>Created neuron.</returns>
     private Neuron AddOutputNeuron(string name)
     {
+
         Neuron newNeuron = new Neuron(allNeurons.Count, name, NeuronType.OutputNeuron);
-        outputNeurons.Add(newNeuron);
         allNeurons.Add(newNeuron);
+
+        //since network structure changed, neurons have to be sorted
+        SortNeurons();
+
         return newNeuron;
+
+    }
+
+    /// <summary>
+    /// Removes input neuron from the network, with all related connections.
+    /// </summary>
+    /// <param name="name">Name of the neuron to be removed.</param>
+    public void RemoveInputNeuron(string name)
+    {
+
+        Neuron inputNeuron = GetNeuronByName(name);
+
+        //removing links in hidden neurons
+        foreach (Neuron hiddenNeuron in inputNeuron.outputLinks)
+        {
+            hiddenNeuron.inputLinks.RemoveAll((x) => x.link == inputNeuron);
+        }
+
+        //removing neuron from lists
+        allNeurons.Remove(inputNeuron);
+
+        //since network structure changed, neurons have to be sorted
+        SortNeurons();
+
+    }
+
+    /// <summary>
+    /// Sorts neurons in layers.
+    /// Field "layers" is updated as a result.
+    /// </summary>
+    public void SortNeurons()
+    {
+
+        //all ids have to be zero at the start so algorithm can work
+        foreach (Neuron neuron in allNeurons)
+        {
+            neuron.layerId = 0;
+        }
+
+        //finding input neurons (they don't have any input links)
+        List<Neuron> BFSlist = (from neuron in allNeurons where neuron.inputLinks.Count == 0 select neuron).ToList();
+
+        //counting layers
+        int maxLayerId = 0;
+
+        //traversing neurons to assign layer id to them
+        while (BFSlist.Count > 0)
+        {
+            //next step of BFS algorithm
+            List<Neuron> nextList = new List<Neuron>();
+            foreach (Neuron neuron in BFSlist)
+            {
+                //neurons which are further from input neurons will get higher layer id
+                int nextLayerId = neuron.layerId + 1;
+                foreach (Neuron nextNeuron in neuron.outputLinks)
+                {
+                    if (nextNeuron.layerId < nextLayerId)
+                    {
+                        //if layer id of next neuron is lower than it should be, it is updated
+                        nextNeuron.layerId = nextLayerId;
+                        maxLayerId = nextLayerId > maxLayerId ? nextLayerId : maxLayerId;
+                    }
+                    if (!nextList.Contains(nextNeuron))
+                    {
+                        nextList.Add(nextNeuron);
+                    }
+                }
+            }
+            //going to the next step
+            BFSlist = new List<Neuron>(nextList);
+        }
+
+        //after layer ids are assigned, list of layers is formed
+        layers = new List<List<Neuron>>();
+        for (int i = 0; i < maxLayerId + 1; i++)
+        {
+            List<Neuron> layer = (from neuron in allNeurons where neuron.layerId == i select neuron).ToList();
+            layers.Add(layer);
+        }
+
     }
 
     /// <summary>
@@ -358,30 +519,46 @@ public class NeuralNetwork
     /// </summary>
     /// <param name="inputs">Inputs to be fed to the network.</param>
     /// <returns>List of values of output neurons.</returns>
-    public List<double> Feedforward(List<double> inputs)
+    public Dictionary<string, double> Feedforward(Dictionary<string, double> inputs)
     {
+
+        //setting values of input neurons
         SetInputs(inputs);
-        foreach (Neuron neuron in allNeurons)
+
+        //calculating values of neurons layer by layer
+        foreach (List<Neuron> layer in layers)
         {
-            neuron.Feedforward();
+            foreach (Neuron neuron in layer)
+            {
+                neuron.Feedforward();
+            }
         }
-        List<double> output = new List<double>();
-        foreach (Neuron neuron in outputNeurons)
+
+        //collecting values of output neurons
+        Dictionary<string, double> output = new Dictionary<string, double>();
+        foreach (Neuron neuron in GetOutputNeurons())
         {
-            output.Add(neuron.value);
+            output.Add(neuron.name, neuron.value);
         }
         return output;
+
     }
 
     /// <summary>
     /// Sets values of input neurons.
     /// </summary>
-    /// <param name="inputs">List of inputs. Size should match number of input neurons.</param>
-    private void SetInputs(List<double> inputs)
+    /// <param name="inputs">Dictionary with names of inputs and their values.</param>
+    private void SetInputs(Dictionary<string, double> inputs)
     {
-        for (int i = 0; i < inputs.Count; i++)
+
+        if (inputs.Count != GetInputNeurons().Count)
         {
-            inputNeurons[i].value = inputs[i];
+            throw new NeuralNetworkException(String.Format("Input count mismatch: {0} inputs provided while network has {1}", inputs.Count, GetInputNeurons().Count));
+        }
+
+        foreach (KeyValuePair<string, double> input in inputs)
+        {
+            GetNeuronByName(input.Key).value = input.Value;
         }
     }
 
@@ -392,45 +569,102 @@ public class NeuralNetwork
     /// <param name="maxMutation">Maximum amount of mutation.</param>
     public void Mutate(double power, double maxMutation)
     {
-        foreach (Neuron neuron in hiddenNeurons)
+        foreach (Neuron neuron in GetHiddenNeurons())
         {
             neuron.Mutate(power, maxMutation);
         }
-        foreach (Neuron neuron in outputNeurons)
+        foreach (Neuron neuron in GetOutputNeurons())
         {
             neuron.Mutate(power, maxMutation);
         }
     }
 
     /// <summary>
-    /// Does crossover of two neural networks.
+    /// Returns neuron with specified id.
     /// </summary>
-    /// <param name="network1">First parent.</param>
-    /// <param name="network2">Second parent.</param>
-    /// <returns>New neural newtwork which is result of crossover.</returns>
-    public static NeuralNetwork Crossover(NeuralNetwork network1, NeuralNetwork network2)
+    /// <exception cref="NeuralNetworkException">Throws if neuron not found or if there are multiple neurons with specified id.</exception>
+    public Neuron GetNeuronById(int id)
     {
-
-        NeuralNetwork newNetwork = new NeuralNetwork(network1.inputCount, network1.outputCount, network1.hiddenLayers, network1.neuronsInLayer);
-
-        //crossover of hidden neurons
-        for (int i = 0; i < network1.hiddenNeurons.Count; i++)
+        List<Neuron> matchingNeurons = allNeurons.FindAll((x) => x.id == id);
+        if (matchingNeurons.Count == 0)
         {
-            Neuron.NeuronCrossover(newNetwork.hiddenNeurons[i], network1.hiddenNeurons[i], network2.hiddenNeurons[i]);
+            throw new NeuralNetworkException(String.Format("Neuron with id {0} not found", id));
         }
-
-        //crossover of output neurons
-        for (int i = 0; i < network1.outputNeurons.Count; i++)
+        else if (matchingNeurons.Count > 1)
         {
-            Neuron.NeuronCrossover(newNetwork.outputNeurons[i], network1.outputNeurons[i], network2.outputNeurons[i]);
+            throw new NeuralNetworkException(String.Format("Found multiple neurons with id {0}", id));
         }
+        else
+        {
+            return matchingNeurons[0];
+        }
+    }
 
-        //useful for debugging
-        newNetwork.parent1Id = network1.id;
-        newNetwork.parent2Id = network2.id;
+    /// <summary>
+    /// Returns neuron with specified name.
+    /// </summary>
+    /// <exception cref="NeuralNetworkException">Throws if neuron not found or if there are multiple neurons with specified name.</exception>
+    public Neuron GetNeuronByName(string name)
+    {
+        List<Neuron> matchingNeurons = allNeurons.FindAll((x) => x.name == name);
+        if (matchingNeurons.Count == 0)
+        {
+            throw new NeuralNetworkException(String.Format("Neuron with name {0} not found", name));
+        }
+        else if (matchingNeurons.Count > 1)
+        {
+            throw new NeuralNetworkException(String.Format("Found multiple neurons with name {0}", name));
+        }
+        else
+        {
+            return matchingNeurons[0];
+        }
+    }
 
-        return newNetwork;
+    /// <summary>
+    /// Returns list of input neurons.
+    /// </summary>
+    public List<Neuron> GetInputNeurons()
+    {
+        if (layers.Count > 0)
+        {
+            return layers[0];
+        }
+        else
+        {
+            return new List<Neuron>();
+        }
+    }
 
+    /// <summary>
+    /// Returns list of hidden neurons.
+    /// </summary>
+    public List<Neuron> GetHiddenNeurons()
+    {
+        if (layers.Count > 2)
+        {
+            return layers.GetRange(1, layers.Count - 2).SelectMany(i => i).ToList();
+        }
+        else
+        {
+            return new List<Neuron>();
+        }
+    }
+
+    /// <summary>
+    /// Returns list of output neurons.
+    /// </summary>
+    /// <returns></returns>
+    public List<Neuron> GetOutputNeurons()
+    {
+        if (layers.Count > 0)
+        {
+            return layers.Last();
+        }
+        else
+        {
+            return new List<Neuron>();
+        }
     }
 
     /// <summary>
@@ -440,11 +674,27 @@ public class NeuralNetwork
     public override string ToString()
     {
         string s = String.Format("id: {0}\n", id);
-        foreach (Neuron neuron in allNeurons)
+        for (int i = 0; i < layers.Count; i++)
         {
-            s += String.Format("    {0}\n", neuron.ToString());
+            List<Neuron> layer = layers[i];
+            s += String.Format("Layer {0}\n", i);
+            foreach (Neuron neuron in layer)
+            {
+                s += String.Format("    {0}\n", neuron.ToString());
+            }
         }
         return s;
+    }
+
+    /// <summary>
+    /// Copies neural network. Copy receives higher id than original.
+    /// </summary>
+    /// <returns></returns>
+    public NeuralNetwork Copy()
+    {
+        NeuralNetwork copy = Utils.ObjectCopier.Clone<NeuralNetwork>(this);
+        copy.id++;
+        return copy;
     }
 
     /// <summary>
@@ -467,6 +717,7 @@ public class NeuralNetwork
     /// <returns>Loaded neural network.</returns>
     public static NeuralNetwork Deserialize(String fileName)
     {
+
         FileStream fs = new FileStream(fileName, FileMode.Open);
         XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas();
         quotas.MaxDepth = 256;
@@ -475,7 +726,12 @@ public class NeuralNetwork
         NeuralNetwork deserializedNetwork = (NeuralNetwork)ser.ReadObject(reader, true);
         reader.Close();
         fs.Close();
+
+        //deserializer doesn't use usual means of creating object, so this has to be done
+        deserializedNetwork.SortNeurons();
+
         return deserializedNetwork;
+
     }
 
     /// <summary>
@@ -488,12 +744,9 @@ public class NeuralNetwork
 
         //saving network properties
         writer.WriteLine("id " + id);
-        writer.WriteLine("inputCount " + inputCount);
-        writer.WriteLine("outputCount " + outputCount);
-        writer.WriteLine("hiddenLayers " + hiddenLayers);
-        writer.WriteLine("neuronsInLayer " + neuronsInLayer);
         writer.WriteLine("fitness " + fitness);
         writer.WriteLine("breakthroughCount " + breakthroughCount);
+        writer.WriteLine();
 
         //saving neurons
         foreach (Neuron neuron in allNeurons)
@@ -506,29 +759,11 @@ public class NeuralNetwork
                 case NeuronType.OutputNeuron: typeString = "Output"; break;
             }
             writer.WriteLine(typeString + " " + neuron.id + " " + neuron.name);
-            foreach (double weight in neuron.weights)
+            foreach (InputLink inputLink in neuron.inputLinks)
             {
-                writer.WriteLine("    w " + weight);
+                writer.WriteLine(String.Format("    w {0} {1}", inputLink.weight, inputLink.link.id));
             }
             writer.WriteLine("    b " + neuron.bias);
-        }
-
-        writer.WriteLine("----");
-
-        //saving connections between neurons
-        foreach (Neuron neuron in allNeurons)
-        {
-            if(neuron.inputLinks.Count == 0)
-            {
-                continue;
-            }
-            writer.WriteLine(neuron.id);
-            writer.Write("    ");
-            foreach (Neuron linkedNeuron in neuron.inputLinks)
-            {
-                writer.Write(linkedNeuron.id + " ");
-            }
-            writer.WriteLine();
         }
 
         writer.Close();
@@ -546,25 +781,34 @@ public class NeuralNetwork
 
         //loading network properties
         loadedNetwork.id = Int32.Parse(reader.ReadLine().Split(' ')[1]);
-        loadedNetwork.inputCount = Int32.Parse(reader.ReadLine().Split(' ')[1]);
-        loadedNetwork.outputCount = Int32.Parse(reader.ReadLine().Split(' ')[1]);
-        loadedNetwork.hiddenLayers = Int32.Parse(reader.ReadLine().Split(' ')[1]);
-        loadedNetwork.neuronsInLayer = Int32.Parse(reader.ReadLine().Split(' ')[1]);
         loadedNetwork.fitness = Double.Parse(reader.ReadLine().Split(' ')[1]);
         loadedNetwork.breakthroughCount = Int32.Parse(reader.ReadLine().Split(' ')[1]);
 
-        //loading neurons
+        //these properties will be skipped on the second pass, so we need to know amount of them
+        const int networkParameterCount = 3;
+
+        //skipping empty line
+        reader.ReadLine();
+
+        //first pass, loading list of neurons and creating them
         while (true)
         {
 
-            //neuron list ends with ----
             string nextLine = reader.ReadLine();
-            if (nextLine == "----")
+
+            //checking if list has ended
+            if (nextLine == null || nextLine == "")
             {
                 break;
             }
 
-            //loading general info
+            //skipping lines with weights
+            if (nextLine.StartsWith("    "))
+            {
+                continue;
+            }
+
+            //creating new neuron
             Neuron newNeuron = null;
             string[] neuronHeader = nextLine.Split(' ');
             switch (neuronHeader[0])
@@ -576,8 +820,35 @@ public class NeuralNetwork
             newNeuron.id = Int32.Parse(neuronHeader[1]);
             newNeuron.name = neuronHeader[2];
 
+        }
+
+        //reset position to the beginning of the file
+        reader.DiscardBufferedData();
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+
+        //skipping network parameters and empty line in the beginning
+        for (int i = 0; i < networkParameterCount + 1; i++)
+        {
+            reader.ReadLine();
+        }
+
+        //second pass, loading neurons
+        while (true)
+        {
+
+            //cheking if list has ended
+            string nextLine = reader.ReadLine();
+            if (nextLine == null || nextLine == "")
+            {
+                break;
+            }
+
+            //finding neuron
+            string[] neuronHeader = nextLine.Split(' ');
+            int neuronId = Int32.Parse(neuronHeader[1]);
+            Neuron neuron = loadedNetwork.GetNeuronById(neuronId);
+
             //loading weights and bias
-            bool neuronEnded = false;
             while (true)
             {
                 string[] weightOrBiasLine = reader.ReadLine().Trim().Split(' ');
@@ -585,48 +856,16 @@ public class NeuralNetwork
                 double value = Double.Parse(weightOrBiasLine[1]);
                 if (label == "w")
                 {
-                    newNeuron.weights.Add(value);
+                    int connection = Int32.Parse(weightOrBiasLine[2]);
+                    Neuron anotherNeuron = loadedNetwork.GetNeuronById(connection);
+                    InputLink newInputLink = loadedNetwork.Connect(anotherNeuron, neuron);
+                    newInputLink.weight = value;
                 }
                 else if (label == "b")
                 {
-                    newNeuron.bias = value;
-                    //line with bias is the last line of the neuron
-                    neuronEnded = true;
-                    break;
+                    neuron.bias = value;
+                    break; //line with bias is the last line of the neuron
                 }
-            }
-            if (neuronEnded)
-            {
-                continue;
-            }
-
-        }
-
-        //loading connections between neurons
-        while (true)
-        {
-
-            //connection list ends with the end of the file
-            string nextLine = reader.ReadLine();
-            if (nextLine == null)
-            {
-                break;
-            }
-
-            int neuronId = Int32.Parse(nextLine);
-            string connectionsLine = reader.ReadLine().Trim();
-            if (connectionsLine == "")
-            {
-                //input neurons don't have input links
-                continue;
-            }
-            string[] connectionIndices = connectionsLine.Split(' ');
-            foreach (string connectionIndexString in connectionIndices)
-            {
-                int connectionIndex = Int32.Parse(connectionIndexString);
-                Neuron neuron1 = loadedNetwork.allNeurons[connectionIndex];
-                Neuron neuron2 = loadedNetwork.allNeurons[neuronId];
-                loadedNetwork.Connect(neuron1, neuron2, false);
             }
 
         }
@@ -712,6 +951,43 @@ public class Utils
         return result;
     }
 
+    /// <summary>
+    /// Reference Article http://www.codeproject.com/KB/tips/SerializedObjectCloner.aspx
+    /// Provides a method for performing a deep copy of an object.
+    /// Binary Serialization is used to perform the copy.
+    /// </summary>
+    public static class ObjectCopier
+    {
+        /// <summary>
+        /// Perform a deep Copy of the object.
+        /// </summary>
+        /// <typeparam name="T">The type of object being copied.</typeparam>
+        /// <param name="source">The object instance to copy.</param>
+        /// <returns>The copied object.</returns>
+        public static T Clone<T>(T source)
+        {
+            if (!typeof(T).IsSerializable)
+            {
+                throw new ArgumentException("The type must be serializable.", "source");
+            }
+
+            // Don't serialize a null object, simply return the default for that object
+            if (Object.ReferenceEquals(source, null))
+            {
+                return default(T);
+            }
+
+            IFormatter formatter = new BinaryFormatter();
+            Stream stream = new MemoryStream();
+            using (stream)
+            {
+                formatter.Serialize(stream, source);
+                stream.Seek(0, SeekOrigin.Begin);
+                return (T)formatter.Deserialize(stream);
+            }
+        }
+    }
+
 }
 
 /// <summary>
@@ -722,46 +998,49 @@ class Program
     static void Main(string[] args)
     {
 
+        List<string> inputList = new List<string> { "input1", "input2" };
+        List<string> outputList = new List<string> { "output1", "output2" };
+
         Console.WriteLine("Basic test");
         Console.WriteLine();
 
-        NeuralNetwork network1 = new NeuralNetwork(2, 2, 2, 2);
-        network1.hiddenNeurons[0].weights[0] = 1;
-        network1.hiddenNeurons[2].weights[0] = 1;
-        network1.outputNeurons[0].weights[0] = 1;
-        network1.Feedforward(new List<double> { 2, 3 });
+        NeuralNetwork network1 = new NeuralNetwork(inputList, outputList, 2, 2);
+        network1.GetHiddenNeurons()[0].inputLinks[0].weight = 1;
+        network1.GetHiddenNeurons()[2].inputLinks[0].weight = 1;
+        network1.GetOutputNeurons()[0].inputLinks[0].weight = 1;
+        network1.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network1);
         Console.WriteLine();
 
-        NeuralNetwork network2 = new NeuralNetwork(2, 2, 2, 2);
-        network2.hiddenNeurons[0].weights[0] = 2;
-        network2.hiddenNeurons[2].weights[0] = 2;
-        network2.outputNeurons[0].weights[0] = 2;
-        network2.Feedforward(new List<double> { 2, 3 });
+        Console.WriteLine("Copying test");
+        Console.WriteLine();
+
+        NeuralNetwork network2 = network1.Copy();
+        network2.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network2);
         Console.WriteLine();
 
-        Console.WriteLine("Crossover and mutation test");
+        Console.WriteLine("Random weights test");
         Console.WriteLine();
 
-        NeuralNetwork network3 = NeuralNetwork.Crossover(network1, network2);
-        network3.Feedforward(new List<double> { 2, 3 });
+        NeuralNetwork network3 = network2.Copy();
+        network3.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network3);
         Console.WriteLine();
 
-        network3.hiddenNeurons[0].weights[0] = -0.083920758234613382;
-        network3.hiddenNeurons[0].weights[1] = -0.10348547168394251;
-        network3.hiddenNeurons[1].weights[0] = 0.9864023685598281;
-        network3.hiddenNeurons[1].weights[1] = 0.15295621398799475;
-        network3.hiddenNeurons[2].weights[0] = -0.070737256110288152;
-        network3.hiddenNeurons[2].weights[1] = -1.0365333983959844;
-        network3.hiddenNeurons[3].weights[0] = 0.46109638325388069;
-        network3.hiddenNeurons[3].weights[1] = -0.25149451732354522;
-        network3.outputNeurons[0].weights[0] = 0.50648030282771972;
-        network3.outputNeurons[0].weights[1] = 0.51670017869582552;
-        network3.outputNeurons[1].weights[0] = 0.23281424843657786;
-        network3.outputNeurons[1].weights[1] = -0.60550942224139681;
-        network3.Feedforward(new List<double> { 2, 3 });
+        network3.GetHiddenNeurons()[0].inputLinks[0].weight = -0.083920758234613382;
+        network3.GetHiddenNeurons()[0].inputLinks[1].weight = -0.10348547168394251;
+        network3.GetHiddenNeurons()[1].inputLinks[0].weight = 0.9864023685598281;
+        network3.GetHiddenNeurons()[1].inputLinks[1].weight = 0.15295621398799475;
+        network3.GetHiddenNeurons()[2].inputLinks[0].weight = -0.070737256110288152;
+        network3.GetHiddenNeurons()[2].inputLinks[1].weight = -1.0365333983959844;
+        network3.GetHiddenNeurons()[3].inputLinks[0].weight = 0.46109638325388069;
+        network3.GetHiddenNeurons()[3].inputLinks[1].weight = -0.25149451732354522;
+        network3.GetOutputNeurons()[0].inputLinks[0].weight = 0.50648030282771972;
+        network3.GetOutputNeurons()[0].inputLinks[1].weight = 0.51670017869582552;
+        network3.GetOutputNeurons()[1].inputLinks[0].weight = 0.23281424843657786;
+        network3.GetOutputNeurons()[1].inputLinks[1].weight = -0.60550942224139681;
+        network3.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network3);
         Console.WriteLine();
 
@@ -771,7 +1050,7 @@ class Program
         network3.Serialize("network.xml");
 
         NeuralNetwork network4 = NeuralNetwork.Deserialize("network.xml");
-        network4.Feedforward(new List<double> { 2, 3 });
+        network4.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network4);
         Console.WriteLine();
 
@@ -781,15 +1060,26 @@ class Program
         network4.SaveToFile("network.txt");
 
         NeuralNetwork network5 = NeuralNetwork.LoadFromFile("network.txt");
-        network5.Feedforward(new List<double> { 2, 3 });
+        network5.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network5);
         Console.WriteLine();
 
-        network5.Serialize("network.xml");
+        Console.WriteLine("Adding neuron test");
+        Console.WriteLine();
 
-        NeuralNetwork network6 = NeuralNetwork.Deserialize("network.xml");
-        network6.Feedforward(new List<double> { 2, 3 });
-        Console.WriteLine(network6);
+        network5.AddInputNeuron("newInput", true);
+        network5.GetHiddenNeurons()[0].SetWeight("newInput", 0.333);
+        network5.GetHiddenNeurons()[1].SetWeight("newInput", -0.333);
+        network5.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 }, { "newInput", 5.5 } });
+        Console.WriteLine(network5);
+        Console.WriteLine();
+
+        Console.WriteLine("Removing neuron test");
+        Console.WriteLine();
+
+        network5.RemoveInputNeuron("input1");
+        network5.Feedforward(new Dictionary<string, double> { { "input2", 2 }, { "newInput", 3 } });
+        Console.WriteLine(network5);
         Console.WriteLine();
 
     }

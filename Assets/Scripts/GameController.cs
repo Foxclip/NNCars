@@ -8,9 +8,6 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
 
-    public const int INPUT_COUNT = 12;              //number of inputs neural network will have
-    public const int OUTPUT_COUNT = 2;              //number of outputs neural network will have
-
     public int layerCount = 1;                      //number of hidden layers neural network will have
     public int neuronsInLayer = 16;                 //number of neurons in hidden layers
     public int populationSize = 10;                 //number of diffrerent neural networks in generation
@@ -122,7 +119,9 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            bestNetwork = new NeuralNetwork(INPUT_COUNT, OUTPUT_COUNT, layerCount, neuronsInLayer);
+            List<string> registeredInputs = carObject.GetComponent<CarController>().registeredInputs;
+            List<string> registeredOutputs = carObject.GetComponent<CarController>().registeredOutputs;
+            bestNetwork = new NeuralNetwork(registeredInputs, registeredOutputs, layerCount, neuronsInLayer);
         }
 
 
@@ -297,6 +296,7 @@ public class GameController : MonoBehaviour
         }
 
         //updating best time
+        //if run 0 improves time, it will be updated, but max fitness will not
         if (runMinTime >= 0.0 && (runMinTime < acceptedMinTime || acceptedMinTime < 0.0))
         {
             acceptedMinTime = runMinTime;
@@ -327,7 +327,7 @@ public class GameController : MonoBehaviour
         for (int i = 0; i < populationSize; i++)
         {
             //WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
-            NeuralNetwork newNetwork = NeuralNetwork.Crossover(bestNetwork, bestNetwork);
+            NeuralNetwork newNetwork = bestNetwork.Copy();
             newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
             newGeneration.Add(newNetwork);
         }
