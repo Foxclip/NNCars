@@ -63,6 +63,7 @@ public class GameController : MonoBehaviour
         public double nextCheckpoint;
     };
 
+    private CarController carController;                            //CarController script
     private Transform track;                                        //transform of the track
     private Transform carSpawnPoint;                                //where car will be placed before strting a pass
     private List<Transform> checkpoints = new List<Transform>();    //list of all checkpoints in the track
@@ -88,6 +89,9 @@ public class GameController : MonoBehaviour
     void Start()
     {
 
+        //getting CarController
+        carController = carObject.GetComponent<CarController>();
+
         //loading track
         Transform tracksParent = GameObject.Find("Tracks").transform;
         foreach(Transform t in tracksParent)
@@ -108,9 +112,9 @@ public class GameController : MonoBehaviour
         }
 
         //loading neural network or creating new one
-        if (StartupSettings.networkFile != "")
+        if (StartupSettings.neuralNetwork != null)
         {
-            bestNetwork = NeuralNetwork.LoadFromFile(StartupSettings.networkFile);
+            bestNetwork = StartupSettings.neuralNetwork;
             breakthroughCount = bestNetwork.breakthroughCount;
             if (!StartupSettings.resetFitness)
             {
@@ -119,11 +123,10 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            List<string> registeredInputs = carObject.GetComponent<CarController>().registeredInputs;
-            List<string> registeredOutputs = carObject.GetComponent<CarController>().registeredOutputs;
+            List<string> registeredInputs = CarController.registeredInputs;
+            List<string> registeredOutputs = CarController.registeredOutputs;
             bestNetwork = new NeuralNetwork(registeredInputs, registeredOutputs, layerCount, neuronsInLayer);
         }
-
 
         //preparing simulation
         PreGeneration();
@@ -392,7 +395,7 @@ public class GameController : MonoBehaviour
 
         //initializing neural network
         NeuralNetwork network = generation[runIndex];
-        carObject.GetComponent<CarController>().neuralNetwork = network;
+        carController.neuralNetwork = network;
 
         //list of passes has to be cleared
         passes = new List<Pass>();
@@ -471,7 +474,7 @@ public class GameController : MonoBehaviour
         nextCheckpoint = 0;
         collisionDetected = false;
         passFitness = 0;
-        carObject.GetComponent<CarController>().ResetQueues();
+        carController.ResetQueues();
 
         //randomized rotation
         carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(passIndex, 0, passCount - 1, randomAngleMin, randomAngleMax));

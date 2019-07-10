@@ -6,8 +6,8 @@ public class CarController : MonoBehaviour
 {
 
     //names of inputs and outputs of the neural network
-    public List<string> registeredInputs = new List<string> { "RayLeftFront45", "RayRightFront45", "Speed", "FrontSlip", "RearSlip" };
-    public List<string> registeredOutputs = new List<string> { "motor", "steering" };
+    public static List<string> registeredInputs = new List<string> { "RayLeftFront45", "RayRightFront45", "Speed", "FrontSlip", "RearSlip" };
+    public static List<string> registeredOutputs = new List<string> { "motor", "steering" };
 
     public bool manualControl = false;                      //if by some reason manual keyboard control is needed
     public List<AxleInfo> axleInfos;                        //the information about each individual axle

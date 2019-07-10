@@ -146,7 +146,7 @@ public class Neuron
     }
 
     /// <summary>
-    /// Returns all weights of a neuron.
+    /// Returns list with all weights of a neuron.
     /// </summary>
     public List<double> GetWeights()
     {
@@ -156,13 +156,20 @@ public class Neuron
     /// <summary>
     /// Sets weights of a neuron.
     /// </summary>
-    /// <param name="newWeights">List of new weights.</param>
+    /// <param name="newWeights">List of new weights. Must be same size as amount of weights in the neuron.</param>
     public void SetWeights(List<double> newWeights)
     {
+
+        if (newWeights.Count != inputLinks.Count)
+        {
+            throw new NeuralNetworkException(String.Format("Cannot set weights: trying to set {0} weights while neuron {1} has {2}", newWeights.Count, name, inputLinks.Count));
+        }
+
         for (int i = 0; i < newWeights.Count; i++)
         {
             inputLinks[i].weight = newWeights[i];
         }
+
     }
 
     /// <summary>
@@ -175,11 +182,11 @@ public class Neuron
         List<InputLink> matchingInputLinks = inputLinks.FindAll((x) => x.link.name == name);
         if (matchingInputLinks.Count == 0)
         {
-            throw new NeuralNetworkException(String.Format("Input link with name {0} not found", name));
+            throw new NeuralNetworkException(String.Format("Input link with name {0} not found in neuron {1}", name, this.name));
         }
         else if (matchingInputLinks.Count > 1)
         {
-            throw new NeuralNetworkException(String.Format("Found multiple input links with name {0}", name));
+            throw new NeuralNetworkException(String.Format("Found multiple input links with name {0} in neuron {1}", name, this.name));
         }
         else
         {
@@ -250,8 +257,8 @@ public class NeuralNetwork
     /// </summary>
     public NeuralNetwork() { }
 
-    /// <param name="inputCount">Number of input neurons.</param>
-    /// <param name="outputCount">Number of output neurons.</param>
+    /// <param name="inputNames">Names of inputs.</param>
+    /// <param name="outputNames">Names of outputs.</param>
     /// <param name="hiddenLayers">Number of hidden layers.</param>
     /// <param name="neuronsInLayer">Numbers of neurons in each hidden layer.</param>
     public NeuralNetwork(List<string> inputNames, List<string> outputNames, int hiddenLayers, int neuronsInLayer)
@@ -365,7 +372,7 @@ public class NeuralNetwork
     /// Adds new input neuron to the neural network (and, optionally, connect it to the next layer).
     /// </summary>
     /// <param name="name">Name of the neuron.</param>
-    /// <param name="connect">If new neuron should be connected to hidden neurons right away.</param>
+    /// <param name="connect">If new neuron should be connected to neurons in the next layer.</param>
     /// <returns>Created neuron.</returns>
     public Neuron AddInputNeuron(string name, bool connect = false)
     {
@@ -388,7 +395,6 @@ public class NeuralNetwork
             {
                 Connect(newNeuron, hiddenNeuron);
             }
-
 
         }
 
@@ -418,15 +424,34 @@ public class NeuralNetwork
     }
 
     /// <summary>
-    /// Adds new output neuron to the neural network.
+    /// Adds new output neuron to the neural network (and, optionally, connect it to the previous layer).
     /// </summary>
     /// <param name="name">Name of the neuron.</param>
+    /// <param name="connect">If new neuron should be connected to neurons in the previous layer.</param>
     /// <returns>Created neuron.</returns>
-    private Neuron AddOutputNeuron(string name)
+    public Neuron AddOutputNeuron(string name, bool connect = false)
     {
 
+        //creating new neuron
         Neuron newNeuron = new Neuron(allNeurons.Count, name, NeuronType.OutputNeuron);
+
+        //adding it to the list
         allNeurons.Add(newNeuron);
+
+        //connecting it to the previous layer
+        if (connect)
+        {
+
+            if (layers.Count < 2)
+            {
+                throw new NeuralNetworkException("New output neuron can be connected only if there are at least 2 layers (including input and output layers) in the network");
+            }
+            foreach (Neuron hiddenNeuron in layers[layers.Count - 2])
+            {
+                Connect(hiddenNeuron, newNeuron);
+            }
+
+        }
 
         //since network structure changed, neurons have to be sorted
         SortNeurons();
@@ -450,7 +475,7 @@ public class NeuralNetwork
             hiddenNeuron.inputLinks.RemoveAll((x) => x.link == inputNeuron);
         }
 
-        //removing neuron from lists
+        //removing neuron from the list
         allNeurons.Remove(inputNeuron);
 
         //since network structure changed, neurons have to be sorted
@@ -459,10 +484,43 @@ public class NeuralNetwork
     }
 
     /// <summary>
+    /// Removes output neuron from the network, with all related connections.
+    /// </summary>
+    /// <param name="neuron">Neuron to be removed.</param>
+    public void RemoveOutputNeuron(Neuron neuron)
+    {
+
+        //removing links in hidden neurons
+        foreach (Neuron hiddenNeuron in from inputLink in neuron.inputLinks select inputLink.link)
+        {
+            hiddenNeuron.outputLinks.Remove(neuron);
+        }
+
+        //removing neuron from the list
+        allNeurons.Remove(neuron);
+
+        //since network structure changed, neurons have to be sorted
+        SortNeurons();
+
+    }
+
+    /// <summary>
+    /// Removes output neuron from the network, with all related connections.
+    /// </summary>
+    /// <param name="name">Name of the neuron to be removed.</param>
+    public void RemoveOutputNeuron(string name)
+    {
+
+        Neuron outputNeuron = GetNeuronByName(name);
+        RemoveOutputNeuron(outputNeuron);
+
+    }
+
+    /// <summary>
     /// Sorts neurons in layers.
     /// Field "layers" is updated as a result.
     /// </summary>
-    public void SortNeurons()
+    private void SortNeurons()
     {
 
         //all ids have to be zero at the start so algorithm can work
@@ -580,15 +638,14 @@ public class NeuralNetwork
     }
 
     /// <summary>
-    /// Returns neuron with specified id.
+    /// Returns neuron with specified id. Throws exception if neuron not found, or found multiple neurons with specified id.
     /// </summary>
-    /// <exception cref="NeuralNetworkException">Throws if neuron not found or if there are multiple neurons with specified id.</exception>
     public Neuron GetNeuronById(int id)
     {
         List<Neuron> matchingNeurons = allNeurons.FindAll((x) => x.id == id);
         if (matchingNeurons.Count == 0)
         {
-            throw new NeuralNetworkException(String.Format("Neuron with id {0} not found", id));
+            throw new KeyNotFoundException(String.Format("Neuron with id {0} not found", id));
         }
         else if (matchingNeurons.Count > 1)
         {
@@ -601,15 +658,14 @@ public class NeuralNetwork
     }
 
     /// <summary>
-    /// Returns neuron with specified name.
+    /// Returns neuron with specified name. Throws exception if neuron not found, or found multiple neurons with specified name.
     /// </summary>
-    /// <exception cref="NeuralNetworkException">Throws if neuron not found or if there are multiple neurons with specified name.</exception>
     public Neuron GetNeuronByName(string name)
     {
         List<Neuron> matchingNeurons = allNeurons.FindAll((x) => x.name == name);
         if (matchingNeurons.Count == 0)
         {
-            throw new NeuralNetworkException(String.Format("Neuron with name {0} not found", name));
+            throw new KeyNotFoundException(String.Format("Neuron with name {0} not found", name));
         }
         else if (matchingNeurons.Count > 1)
         {
@@ -623,6 +679,7 @@ public class NeuralNetwork
 
     /// <summary>
     /// Returns list of input neurons.
+    /// Returns empty list if there are no input neurons.
     /// </summary>
     public List<Neuron> GetInputNeurons()
     {
@@ -638,6 +695,7 @@ public class NeuralNetwork
 
     /// <summary>
     /// Returns list of hidden neurons.
+    /// Returns empty list if there are no hidden neurons.
     /// </summary>
     public List<Neuron> GetHiddenNeurons()
     {
@@ -653,6 +711,7 @@ public class NeuralNetwork
 
     /// <summary>
     /// Returns list of output neurons.
+    /// Returns empty list if there are no output neurons.
     /// </summary>
     /// <returns></returns>
     public List<Neuron> GetOutputNeurons()
@@ -1064,7 +1123,7 @@ class Program
         Console.WriteLine(network5);
         Console.WriteLine();
 
-        Console.WriteLine("Adding neuron test");
+        Console.WriteLine("Adding input neuron test");
         Console.WriteLine();
 
         network5.AddInputNeuron("newInput", true);
@@ -1074,10 +1133,27 @@ class Program
         Console.WriteLine(network5);
         Console.WriteLine();
 
-        Console.WriteLine("Removing neuron test");
+        Console.WriteLine("Removing input neuron test");
         Console.WriteLine();
 
         network5.RemoveInputNeuron("input1");
+        network5.Feedforward(new Dictionary<string, double> { { "input2", 2 }, { "newInput", 3 } });
+        Console.WriteLine(network5);
+        Console.WriteLine();
+
+        Console.WriteLine("Adding output neuron test");
+        Console.WriteLine();
+
+        Neuron newOutputNeuron = network5.AddOutputNeuron("newOutput", true);
+        newOutputNeuron.SetWeights(new List<double> { 0.555, -0.555 });
+        network5.Feedforward(new Dictionary<string, double> { { "input2", 2 }, { "newInput", 3 } });
+        Console.WriteLine(network5);
+        Console.WriteLine();
+
+        Console.WriteLine("Removing output neuron test");
+        Console.WriteLine();
+
+        network5.RemoveOutputNeuron("output1");
         network5.Feedforward(new Dictionary<string, double> { { "input2", 2 }, { "newInput", 3 } });
         Console.WriteLine(network5);
         Console.WriteLine();
