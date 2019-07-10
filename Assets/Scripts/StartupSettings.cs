@@ -5,6 +5,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using TMPro;
 using SFB;
 
 public class StartupSettings : MonoBehaviour
@@ -13,8 +14,8 @@ public class StartupSettings : MonoBehaviour
     public GameObject togglePrefab;                                     //UI toggle prefab
 
     public static string networksFolderPath = "./Networks";             //path to folder neural networks will be saved to
-    public Text openFileText;                                           //text containing filename of neural network
-    public Text inputOutputCountText;                                   //text informing about changes that will be made in the loaded neural network
+    public TextMeshProUGUI openFileText;                                //text containing filename of neural network
+    public TextMeshProUGUI inputOutputCountText;                        //text informing about changes that will be made in the loaded neural network
 
     public static NeuralNetwork neuralNetwork = null;                   //neural network loaded from file
     public static int trackIndex = 0;
@@ -31,6 +32,7 @@ public class StartupSettings : MonoBehaviour
     {
 
         //there is placeholder text in Editor, but it should be hidden at the start
+
         inputOutputCountText.text = "";
 
         GenerateToggles();
@@ -108,7 +110,7 @@ public class StartupSettings : MonoBehaviour
             });
 
             //label text
-            Text labelText = newToggle.transform.Find("Label").GetComponent<Text>();
+            TextMeshProUGUI labelText = newToggle.transform.Find("Label").GetComponent<TextMeshProUGUI>();
             labelText.text = CarController.possibleInputs[i];
 
             inputToggles.Add(toggleComponent);
@@ -138,7 +140,7 @@ public class StartupSettings : MonoBehaviour
             });
 
             //label text
-            Text labelText = newToggle.transform.Find("Label").GetComponent<Text>();
+            TextMeshProUGUI labelText = newToggle.transform.Find("Label").GetComponent<TextMeshProUGUI>();
             labelText.text = CarController.possibleOutputs[i];
 
             outputToggles.Add(toggleComponent);
