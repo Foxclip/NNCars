@@ -5,9 +5,10 @@ using System.Collections.Generic;
 public class CarController : MonoBehaviour
 {
 
-    //names of inputs and outputs of the neural network
-    public static List<string> registeredInputs = new List<string> { "RayLeftFront45", "RayRightFront45", "Speed", "FrontSlip", "RearSlip" };
-    public static List<string> registeredOutputs = new List<string> { "motor", "steering" };
+    //names of possible inputs and outputs of the neural network
+    //list of toggles in StartupSettings will be generated based on these
+    public static List<string> possibleInputs = new List<string> { "RayLeftFront45", "RayRightFront45", "Speed", "FrontSlip", "RearSlip" };
+    public static List<string> possibleOutputs = new List<string> { "motor", "steering" };
 
     public bool manualControl = false;                      //if by some reason manual keyboard control is needed
     public List<AxleInfo> axleInfos;                        //the information about each individual axle
@@ -60,7 +61,7 @@ public class CarController : MonoBehaviour
         for (int list_i = 0; list_i < inputSteps; list_i++)
         {
             Dictionary<string, double> emptyInput = new Dictionary<string, double>();
-            foreach (string inputName in registeredInputs)
+            foreach (string inputName in StartupSettings.registeredInputs)
             {
                 emptyInput.Add(inputName, 0.0);
             }
@@ -72,7 +73,7 @@ public class CarController : MonoBehaviour
         for (int list_i = 0; list_i < outputSteps; list_i++)
         {
             Dictionary<string, double> emptyOutput = new Dictionary<string, double>();
-            foreach (string outputName in registeredOutputs)
+            foreach (string outputName in StartupSettings.registeredOutputs)
             {
                 emptyOutput.Add(outputName, 0.0);
             }
@@ -94,39 +95,57 @@ public class CarController : MonoBehaviour
         //adding raycast lengths to list of inputs
         foreach(Transform rayOrigin in rayOrigins)
         {
+
+            //name of neural network input, as opposed to name of the object in the scene
+            string rayOriginName = rayOrigin.name.Replace(" ", "");
+
+            if (!StartupSettings.registeredInputs.Contains(rayOriginName))
+            {
+                continue;
+            }
+
             RaycastHit hit;
             if(Physics.Raycast(rayOrigin.position, rayOrigin.forward, out hit))
             {
-                NNInputs.Add(rayOrigin.name.Replace(" ", ""), hit.distance);
+                NNInputs.Add(rayOriginName, hit.distance);
                 Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
             } else
             {
-                NNInputs.Add(rayOrigin.name.Replace(" ", ""), - 1.0);
+                NNInputs.Add(rayOriginName, - 1.0);
             }
         }
 
         //adding velocity
-        NNInputs.Add("Speed", rb.velocity.magnitude);
+        if (StartupSettings.registeredInputs.Contains("Speed"))
+        {
+            NNInputs.Add("Speed", rb.velocity.magnitude);
+        }
 
         //adding slip of the front wheels
-        double frontWheelSlip = 0.0;
-        AxleInfo frontAxle = axleInfos[0];
-        WheelHit frontWheelHit;
-        frontAxle.leftWheel.GetGroundHit(out frontWheelHit);
-        frontWheelSlip += frontWheelHit.sidewaysSlip;
-        frontAxle.rightWheel.GetGroundHit(out frontWheelHit);
-        frontWheelSlip += frontWheelHit.sidewaysSlip;
-        NNInputs.Add("FrontSlip", frontWheelSlip);
+        if (StartupSettings.registeredInputs.Contains("FrontSlip"))
+        {
+            double frontWheelSlip = 0.0;
+            AxleInfo frontAxle = axleInfos[0];
+            WheelHit frontWheelHit;
+            frontAxle.leftWheel.GetGroundHit(out frontWheelHit);
+            frontWheelSlip += frontWheelHit.sidewaysSlip;
+            frontAxle.rightWheel.GetGroundHit(out frontWheelHit);
+            frontWheelSlip += frontWheelHit.sidewaysSlip;
+            NNInputs.Add("FrontSlip", frontWheelSlip);
+        }
 
         //adding slip of the rear wheels
-        double rearWheelsSlip = 0.0;
-        AxleInfo rearAxle = axleInfos[1];
-        WheelHit rearWheelHit;
-        rearAxle.leftWheel.GetGroundHit(out rearWheelHit);
-        rearWheelsSlip += rearWheelHit.sidewaysSlip;
-        rearAxle.rightWheel.GetGroundHit(out rearWheelHit);
-        rearWheelsSlip += rearWheelHit.sidewaysSlip;
-        NNInputs.Add("RearSlip", rearWheelsSlip);
+        if (StartupSettings.registeredInputs.Contains("RearSlip"))
+        {
+            double rearWheelsSlip = 0.0;
+            AxleInfo rearAxle = axleInfos[1];
+            WheelHit rearWheelHit;
+            rearAxle.leftWheel.GetGroundHit(out rearWheelHit);
+            rearWheelsSlip += rearWheelHit.sidewaysSlip;
+            rearAxle.rightWheel.GetGroundHit(out rearWheelHit);
+            rearWheelsSlip += rearWheelHit.sidewaysSlip;
+            NNInputs.Add("RearSlip", rearWheelsSlip);
+        }
 
         //inputs which come now will be put to the back of the input queue
         inputQueue.Enqueue(NNInputs);
@@ -137,20 +156,20 @@ public class CarController : MonoBehaviour
             //converting queue to array
             Dictionary<string, double>[] inputs = inputQueue.ToArray();
             //dictionary for results
-            foreach (string inputName in registeredInputs)
+            foreach (string inputName in StartupSettings.registeredInputs)
             {
                 currentInputs.Add(inputName, 0.0);
             }
             //summing input values
             foreach (Dictionary<string, double> input in inputs)
             {
-                foreach (string inputName in registeredInputs)
+                foreach (string inputName in StartupSettings.registeredInputs)
                 {
                     currentInputs[inputName] += input[inputName];
                 }
             }
             //dividing by length to find average
-            foreach (string inputName in registeredInputs)
+            foreach (string inputName in StartupSettings.registeredInputs)
             {
                 currentInputs[inputName] /= inputs.Length;
             }
@@ -181,8 +200,16 @@ public class CarController : MonoBehaviour
         }
         else
         {
-            motor = maxMotorTorque * (float)currentOutputs["motor"];
-            steering = maxSteeringAngle * (float)currentOutputs["steering"];
+            if (StartupSettings.registeredOutputs.Contains("motor"))
+            {
+                motor = maxMotorTorque * (float)currentOutputs["motor"];
+                //car should not go backwards
+                motor = Mathf.Max(0.0f, motor);
+            }
+            if (StartupSettings.registeredOutputs.Contains("steering"))
+            {
+                steering = maxSteeringAngle * (float)currentOutputs["steering"];
+            }
         }
 
         //setting values to the wheels

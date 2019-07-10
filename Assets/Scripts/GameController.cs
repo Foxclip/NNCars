@@ -123,9 +123,7 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            List<string> registeredInputs = CarController.registeredInputs;
-            List<string> registeredOutputs = CarController.registeredOutputs;
-            bestNetwork = new NeuralNetwork(registeredInputs, registeredOutputs, layerCount, neuronsInLayer);
+            bestNetwork = new NeuralNetwork(StartupSettings.registeredInputs, StartupSettings.registeredOutputs, layerCount, neuronsInLayer);
         }
 
         //preparing simulation

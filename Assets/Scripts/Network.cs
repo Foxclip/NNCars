@@ -616,7 +616,12 @@ public class NeuralNetwork
 
         foreach (KeyValuePair<string, double> input in inputs)
         {
-            GetNeuronByName(input.Key).value = input.Value;
+            Neuron neuron = GetNeuronByName(input.Key);
+            if(neuron.type != NeuronType.InputNeuron)
+            {
+                throw new NeuralNetworkException(String.Format("Neuron {0} is not InputNeuron", neuron.name));
+            }
+            neuron.value = input.Value;
         }
     }
 

@@ -10,13 +10,22 @@ using SFB;
 public class StartupSettings : MonoBehaviour
 {
 
-    public static string networksFolderPath = "./Networks";     //path to folder neural networks will be saved to
-    public Text openFileText;                                   //text containing filename of neural network
-    public Text inputOutputCountText;                           //text informing about changes that will be made in the loaded neural network
+    public GameObject togglePrefab;                                     //UI toggle prefab
 
-    public static NeuralNetwork neuralNetwork = null;           //neural network loaded from file
+    public static string networksFolderPath = "./Networks";             //path to folder neural networks will be saved to
+    public Text openFileText;                                           //text containing filename of neural network
+    public Text inputOutputCountText;                                   //text informing about changes that will be made in the loaded neural network
+
+    public static NeuralNetwork neuralNetwork = null;                   //neural network loaded from file
     public static int trackIndex = 0;
-    public static bool resetFitness = false;                    //whether fitness of loaded neural network will be reset
+    public static bool resetFitness = false;                            //whether fitness of loaded neural network will be reset
+
+    public static List<string> registeredInputs = new List<string>();   //list of inputs in the simulation
+    public static List<string> registeredOutputs = new List<string>();  //list of outputs in the simulation
+
+    private List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
+    private List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
+    private string networkFile = "";                                    //current network filename
 
     void Start()
     {
@@ -24,11 +33,118 @@ public class StartupSettings : MonoBehaviour
         //there is placeholder text in Editor, but it should be hidden at the start
         inputOutputCountText.text = "";
 
+        GenerateToggles();
+        UpdateRegisteredInputs();
+        UpdateRegisteredOutputs();
+
     }
 
-    void Update()
+    void UpdateRegisteredInputs()
     {
-        
+        registeredInputs.Clear();
+        foreach(Toggle toggle in inputToggles)
+        {
+            string inputName = toggle.GetComponent<TextProperty>().text;
+            if (toggle.isOn)
+            {
+                registeredInputs.Add(inputName);
+            }
+        }
+    }
+
+    void UpdateRegisteredOutputs()
+    {
+        registeredOutputs.Clear();
+        foreach (Toggle toggle in outputToggles)
+        {
+            string outputName = toggle.GetComponent<TextProperty>().text;
+            if (toggle.isOn)
+            {
+                registeredOutputs.Add(outputName);
+            }
+        }
+    }
+
+    void InputToggleValueChanged(Toggle toggle, bool value, string inputName)
+    {
+        Debug.Log("CHANGED " + toggle.GetInstanceID() + " " + inputName + " " + value);
+        UpdateRegisteredInputs();
+        LoadNetwork(networkFile);
+    }
+
+    void OutputToggleValueChanged(Toggle toggle, bool value, string outputName)
+    {
+        Debug.Log("CHANGED " + toggle.GetInstanceID() + " " + outputName + " " + value);
+        UpdateRegisteredOutputs();
+        LoadNetwork(networkFile);
+    }
+
+    /// <summary>
+    /// Generates UI toggles for choosing inputs and outputs available in the simulation.
+    /// </summary>
+    void GenerateToggles()
+    {
+
+        //inputs
+        for(int i = 0; i < CarController.possibleInputs.Count; i++)
+        {
+
+            //instantiating toggle prefab
+            GameObject newToggle = Instantiate(togglePrefab);
+            newToggle.transform.SetParent(transform.Find("Select Inputs"));
+
+            //related input name will be tied to it
+            TextProperty inputName = newToggle.GetComponent<TextProperty>();
+            inputName.text = CarController.possibleInputs[i];
+
+            //setting position on canvas
+            RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
+            rectTransformComponent.anchoredPosition = new Vector2(0.0f, i * -rectTransformComponent.sizeDelta.y - 20f);
+
+            //event listener
+            Toggle toggleComponent = newToggle.GetComponent<Toggle>();
+            toggleComponent.onValueChanged.AddListener(delegate {
+                InputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
+            });
+
+            //label text
+            Text labelText = newToggle.transform.Find("Label").GetComponent<Text>();
+            labelText.text = CarController.possibleInputs[i];
+
+            inputToggles.Add(toggleComponent);
+
+        }
+
+        //outputs
+        for (int i = 0; i < CarController.possibleOutputs.Count; i++)
+        {
+
+            //instantiating toggle prefab
+            GameObject newToggle = Instantiate(togglePrefab);
+            newToggle.transform.SetParent(transform.Find("Select Outputs"));
+
+            //related output name will be tied to it
+            TextProperty outputName = newToggle.GetComponent<TextProperty>();
+            outputName.text = CarController.possibleOutputs[i];
+
+            //setting position on canvas
+            RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
+            rectTransformComponent.anchoredPosition = new Vector2(0.0f, i * -rectTransformComponent.sizeDelta.y - 20f);
+
+            //event listener
+            Toggle toggleComponent = newToggle.GetComponent<Toggle>();
+            toggleComponent.onValueChanged.AddListener(delegate {
+                OutputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
+            });
+
+            //label text
+            Text labelText = newToggle.transform.Find("Label").GetComponent<Text>();
+            labelText.text = CarController.possibleOutputs[i];
+
+            outputToggles.Add(toggleComponent);
+
+        }
+
     }
 
     /// <summary>
@@ -44,7 +160,7 @@ public class StartupSettings : MonoBehaviour
         int outputsRemoved = 0;
 
         //adding missing inputs
-        foreach (string inputName in CarController.registeredInputs)
+        foreach (string inputName in registeredInputs)
         {
             try
             {
@@ -60,7 +176,7 @@ public class StartupSettings : MonoBehaviour
         //deleting unneeded inputs
         foreach (Neuron inputNeuron in neuralNetwork.GetInputNeurons())
         {
-            if (CarController.registeredInputs.FindAll((x) => x == inputNeuron.name).Count == 0)
+            if (registeredInputs.FindAll((x) => x == inputNeuron.name).Count == 0)
             {
                 neuralNetwork.RemoveInputNeuron(inputNeuron.name);
                 inputsRemoved++;
@@ -68,7 +184,7 @@ public class StartupSettings : MonoBehaviour
         }
 
         //adding missing outputs
-        foreach (string outputName in CarController.registeredOutputs)
+        foreach (string outputName in registeredOutputs)
         {
             try
             {
@@ -84,7 +200,7 @@ public class StartupSettings : MonoBehaviour
         //deleting unneeded outputs
         foreach (Neuron outputNeuron in neuralNetwork.GetOutputNeurons())
         {
-            if (CarController.registeredOutputs.FindAll((x) => x == outputNeuron.name).Count == 0)
+            if (registeredOutputs.FindAll((x) => x == outputNeuron.name).Count == 0)
             {
                 neuralNetwork.RemoveOutputNeuron(outputNeuron);
                 outputsRemoved++;
@@ -96,26 +212,37 @@ public class StartupSettings : MonoBehaviour
 
     }
 
+    public void LoadNetwork(string filename)
+    {
+
+        if(networkFile == "")
+        {
+            return;
+        }
+
+        neuralNetwork = NeuralNetwork.LoadFromFile(filename);
+
+        //inputs/outputs in the network might not match inputs/outputs in the simulation, so neural network has to be updated
+        UpdateInputsOutputs();
+
+    }
+
     public void SelectNetworkFile()
     {
 
         //if there is no "Networks" folder, create it
         Directory.CreateDirectory(networksFolderPath);
 
-        //open file dialog
         string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", networksFolderPath, "txt", false);
+
         if(fileList.Length > 0)
         {
 
             //getting filename
-            string networkFile = fileList[0];
+            networkFile = fileList[0];
             openFileText.text = Path.GetFileName(networkFile);
 
-            //loading network
-            neuralNetwork = NeuralNetwork.LoadFromFile(networkFile);
-
-            //inputs/outputs in the network might not match inputs/outputs in the simulation, so neural network has to be updated
-            UpdateInputsOutputs();
+            LoadNetwork(networkFile);
 
         }
 
