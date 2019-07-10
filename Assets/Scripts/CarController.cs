@@ -7,7 +7,8 @@ public class CarController : MonoBehaviour
 
     //names of possible inputs and outputs of the neural network
     //list of toggles in StartupSettings will be generated based on these
-    public static List<string> possibleInputs = new List<string> { "RayLeftFront45", "RayRightFront45", "Speed", "FrontSlip", "RearSlip" };
+    public static List<string> possibleInputs = new List<string> { "RayForward", "RayLeftFront45", "RayRightFront45", "RayLeft90", "RayRight90",
+        "RayLeftFront22", "RayRightFront22", "RayLeft68", "RayRight68", "Speed", "FrontSlip", "RearSlip" };
     public static List<string> possibleOutputs = new List<string> { "motor", "steering" };
 
     public bool manualControl = false;                      //if by some reason manual keyboard control is needed
