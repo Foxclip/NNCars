@@ -101,11 +101,7 @@ public class StartupSettings : MonoBehaviour
     private List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
     private List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
 
-    private List<Toggle> settingsToggles = new List<Toggle>();
-    private List<TMP_InputField> settingsIntFields = new List<TMP_InputField>();
-    private List<TMP_InputField> settingsFloatFields = new List<TMP_InputField>();
-    private List<TMP_Dropdown> settingsDropdowns = new List<TMP_Dropdown>();
-
+    private static List<GameObject> settingsControls = new List<GameObject>();
 
     void Start()
     {
@@ -234,6 +230,79 @@ public class StartupSettings : MonoBehaviour
 
     }
 
+    public static int GetIntSetting(string name)
+    {
+        foreach (GameObject control in settingsControls)
+        {
+            string linkedName = control.GetComponent<TextProperty>().text;
+            if (linkedName == name)
+            {
+                InputField inputField = control.GetComponent<InputField>();
+                if (inputField == null)
+                {
+                    throw new Exception(String.Format("InputField not found on {0}", name));
+                }
+                return Int32.Parse(inputField.text);
+            }
+        }
+        throw new KeyNotFoundException(String.Format("IntSetting {0} not found"));
+    }
+
+    public static float GetFloatSetting(string name)
+    {
+        foreach (GameObject control in settingsControls)
+        {
+            string linkedName = control.GetComponent<TextProperty>().text;
+            if (linkedName == name)
+            {
+                InputField inputField = control.GetComponent<InputField>();
+                if (inputField == null)
+                {
+                    throw new Exception(String.Format("InputField not found on {0}", name));
+                }
+                return float.Parse(inputField.text);
+            }
+        }
+        throw new KeyNotFoundException(String.Format("FloatSetting {0} not found"));
+    }
+
+    public static bool GetBoolSetting(string name)
+    {
+        foreach (GameObject control in settingsControls)
+        {
+            Debug.Log(control);
+            string linkedName = control.GetComponent<TextProperty>().text;
+            if (linkedName == name)
+            {
+                Toggle toggle = control.GetComponent<Toggle>();
+                if(toggle == null)
+                {
+                    throw new Exception(String.Format("Toggle not found on {0}", name));
+                }
+                return toggle.isOn;
+            }
+        }
+        throw new KeyNotFoundException(String.Format("BoolSetting {0} not found"));
+    }
+
+    public static int GetChoiceSetting(string name)
+    {
+        foreach (GameObject control in settingsControls)
+        {
+            string linkedName = control.GetComponent<TextProperty>().text;
+            if (linkedName == name)
+            {
+                Dropdown dropdown = control.GetComponent<Dropdown>();
+                if (dropdown == null)
+                {
+                    throw new Exception(String.Format("Dropdown not found on {0}", name));
+                }
+                return dropdown.value;
+            }
+        }
+        throw new KeyNotFoundException(String.Format("ChoiceSetting {0} not found"));
+    }
+
     void GenerateSettingsUIControls()
     {
         _GenerateSettingsUIControls(GameController.settings, "SimSettings");
@@ -262,21 +331,18 @@ public class StartupSettings : MonoBehaviour
                 newUIControl = Instantiate(intFieldPrefab);
                 TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
                 inputField.text = ((IntSetting)settings[i]).value.ToString();
-                settingsIntFields.Add(inputField);
             }
             if (settings[i].GetType() == typeof(FloatSetting))
             {
                 newUIControl = Instantiate(floatFieldPrefab);
                 TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
                 inputField.text = ((FloatSetting)settings[i]).value.ToString();
-                settingsFloatFields.Add(inputField);
             }
             if(settings[i].GetType() == typeof(BoolSetting))
             {
                 newUIControl = Instantiate(settingsTogglePrefab);
                 Toggle toggle = newUIControl.GetComponent<Toggle>();
                 toggle.isOn = ((BoolSetting)settings[i]).value;
-                settingsToggles.Add(toggle);
             }
             if (settings[i].GetType() == typeof(ChoiceSetting))
             {
@@ -285,9 +351,9 @@ public class StartupSettings : MonoBehaviour
                 ChoiceSetting setting = ((ChoiceSetting)settings[i]);
                 dropdown.AddOptions(setting.choices);
                 dropdown.value = setting.value;
-                settingsDropdowns.Add(dropdown);
             }
 
+            settingsControls.Add(newUIControl);
             newUIControl.transform.SetParent(labelTextObject.transform, false);
 
             //related input name will be tied to it
