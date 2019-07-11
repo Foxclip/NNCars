@@ -288,7 +288,7 @@ public class StartupSettings : MonoBehaviour
                 settingsDropdowns.Add(dropdown);
             }
 
-            newUIControl.transform.SetParent(transform.Find(parentName));
+            newUIControl.transform.SetParent(labelTextObject.transform, false);
 
             //related input name will be tied to it
             TextProperty settingName = newUIControl.GetComponent<TextProperty>();
@@ -296,7 +296,7 @@ public class StartupSettings : MonoBehaviour
 
             //setting position on canvas
             RectTransform rectTransformComponent = newUIControl.GetComponent<RectTransform>();
-            rectTransformComponent.anchoredPosition = new Vector2(170.0f, i * -rectTransformComponent.sizeDelta.y - 20f);
+            rectTransformComponent.anchoredPosition += new Vector2(170.0f, 0.0f);
 
 
         }
