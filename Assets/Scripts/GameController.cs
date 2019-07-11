@@ -8,11 +8,30 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
 
+    //list of variables which can be set from StartupSettings
+    public static List<Setting> settings = new List<Setting>() {
+        new IntSetting("layerCount", 1),
+        new IntSetting("neuronsInLayer", 2),
+        new IntSetting("populationSize", 10),
+        new IntSetting("passCount", 5),
+        new FloatSetting("mutationPower", 3.0f),
+        new FloatSetting("maxMutation", 1.0f),
+        new FloatSetting("speedupTimeScale", 100.0f),
+        new FloatSetting("checkpointReachDistance", 5.0f),
+        new FloatSetting("randomAngleMin", -22.0f),
+        new FloatSetting("randomAngleMax", 22.0f),
+        new ChoiceSetting("runAcceptMode", new List<string> { "All", "Median" }, 0),
+        new FloatSetting("terminationDelay", 1.0f),
+        new FloatSetting("terminationSpeed", 0.5f),
+        new FloatSetting("checkpointBonusWeight", 100.0f),
+        new FloatSetting("distanceBonusWeight", 10.0f),
+        new FloatSetting("speedBonusWeight", 1.0f)
+    };
+
     public int layerCount = 1;                      //number of hidden layers neural network will have
     public int neuronsInLayer = 16;                 //number of neurons in hidden layers
     public int populationSize = 10;                 //number of diffrerent neural networks in generation
     public int passCount = 3;                       //to improve stability of the solution, several passes are made for each neural network
-    public float crossoverPower = 2;                //how likely neural networks will choose parent from the top
     public float mutationPower = 10;                //how likely small mutations are
     public float maxMutation = 1;                   //maximal amount of mutation in generation
     public float speedupTimeScale = 10;             //when pressing Space, simulation will speed up

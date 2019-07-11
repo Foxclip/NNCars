@@ -8,10 +8,82 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using SFB;
 
+public class Setting
+{
+
+    public string name;
+
+    public Setting(string name)
+    {
+        this.name = name;
+    }
+
+}
+
+public class IntSetting : Setting
+{
+
+    public int value;
+
+    public IntSetting(string name, int value) : base(name)
+    {
+        this.name = name;
+        this.value = value;
+    }
+
+}
+
+public class FloatSetting : Setting
+{
+
+    public float value;
+
+    public FloatSetting(string name, float value) : base(name)
+    {
+        this.name = name;
+        this.value = value;
+    }
+
+}
+
+public class BoolSetting : Setting
+{
+
+    public bool value;
+
+    public BoolSetting(string name, bool value) : base(name)
+    {
+        this.name = name;
+        this.value = value;
+    }
+
+}
+
+public class ChoiceSetting : Setting
+{
+
+    public List<string> choices;
+    public int value;
+
+    public ChoiceSetting(string name, List<string> choices, int value) : base(name)
+    {
+        this.name = name;
+        this.choices = choices;
+        this.value = value;
+    }
+
+}
+
 public class StartupSettings : MonoBehaviour
 {
 
-    public GameObject togglePrefab;                                     //UI toggle prefab
+    //prefabs for UI controls
+    public GameObject togglePrefab;
+    public GameObject settingsTogglePrefab;
+    public GameObject intFieldPrefab;
+    public GameObject floatFieldPrefab;
+    public GameObject dropdownPrefab;
+    public GameObject textPrefab;
 
     public static string networksFolderPath = "./Networks";             //path to folder neural networks will be saved to
     public TextMeshProUGUI openFileText;                                //text containing filename of neural network
@@ -24,20 +96,33 @@ public class StartupSettings : MonoBehaviour
     public static List<string> registeredInputs = new List<string>();   //list of inputs in the simulation
     public static List<string> registeredOutputs = new List<string>();  //list of outputs in the simulation
 
+    private string networkFile = "";                                    //current network filename
+
     private List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
     private List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
-    private string networkFile = "";                                    //current network filename
+
+    private List<Toggle> settingsToggles = new List<Toggle>();
+    private List<TMP_InputField> settingsIntFields = new List<TMP_InputField>();
+    private List<TMP_InputField> settingsFloatFields = new List<TMP_InputField>();
+    private List<TMP_Dropdown> settingsDropdowns = new List<TMP_Dropdown>();
+
 
     void Start()
     {
 
-        //there is placeholder text in Editor, but it should be hidden at the start
+        //things will break if floating point separator is not "."
+        System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)System.Threading.Thread.CurrentThread.CurrentCulture.Clone();
+        customCulture.NumberFormat.NumberDecimalSeparator = ".";
+        System.Threading.Thread.CurrentThread.CurrentCulture = customCulture;
 
+        //there is placeholder text in Editor, but it should be hidden at the start
         inputOutputCountText.text = "";
 
-        GenerateToggles();
+        GenerateInputOutputToggles();
         UpdateRegisteredInputs();
         UpdateRegisteredOutputs();
+
+        GenerateSettingsUIControls();
 
     }
 
@@ -84,7 +169,7 @@ public class StartupSettings : MonoBehaviour
     /// <summary>
     /// Generates UI toggles for choosing inputs and outputs available in the simulation.
     /// </summary>
-    void GenerateToggles()
+    void GenerateInputOutputToggles()
     {
 
         //inputs
@@ -144,6 +229,75 @@ public class StartupSettings : MonoBehaviour
             labelText.text = CarController.possibleOutputs[i];
 
             outputToggles.Add(toggleComponent);
+
+        }
+
+    }
+
+    void GenerateSettingsUIControls()
+    {
+        _GenerateSettingsUIControls(GameController.settings, "SimSettings");
+        _GenerateSettingsUIControls(CarController.settings, "CarSettings");
+    }
+
+    void _GenerateSettingsUIControls(List<Setting> settings, string parentName)
+    {
+
+        for (int i = 0; i < settings.Count; i++)
+        {
+
+            //creating and positioning label text
+            GameObject labelTextObject = Instantiate(textPrefab);
+            labelTextObject.transform.SetParent(transform.Find(parentName));
+            RectTransform labelTextRectTransform = labelTextObject.GetComponent<RectTransform>();
+            labelTextRectTransform.anchoredPosition = new Vector2(0.0f, i * -labelTextRectTransform.sizeDelta.y - 20f);
+            TextMeshProUGUI labelText = labelTextObject.GetComponent<TextMeshProUGUI>();
+            labelText.text = settings[i].name;
+            labelText.alignment = TextAlignmentOptions.MidlineRight;
+
+            //choosing which UI control to create
+            GameObject newUIControl = null;
+            if(settings[i].GetType() == typeof(IntSetting))
+            {
+                newUIControl = Instantiate(intFieldPrefab);
+                TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
+                inputField.text = ((IntSetting)settings[i]).value.ToString();
+                settingsIntFields.Add(inputField);
+            }
+            if (settings[i].GetType() == typeof(FloatSetting))
+            {
+                newUIControl = Instantiate(floatFieldPrefab);
+                TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
+                inputField.text = ((FloatSetting)settings[i]).value.ToString();
+                settingsFloatFields.Add(inputField);
+            }
+            if(settings[i].GetType() == typeof(BoolSetting))
+            {
+                newUIControl = Instantiate(settingsTogglePrefab);
+                Toggle toggle = newUIControl.GetComponent<Toggle>();
+                toggle.isOn = ((BoolSetting)settings[i]).value;
+                settingsToggles.Add(toggle);
+            }
+            if (settings[i].GetType() == typeof(ChoiceSetting))
+            {
+                newUIControl = Instantiate(dropdownPrefab);
+                TMP_Dropdown dropdown = newUIControl.GetComponent<TMP_Dropdown>();
+                ChoiceSetting setting = ((ChoiceSetting)settings[i]);
+                dropdown.AddOptions(setting.choices);
+                dropdown.value = setting.value;
+                settingsDropdowns.Add(dropdown);
+            }
+
+            newUIControl.transform.SetParent(transform.Find(parentName));
+
+            //related input name will be tied to it
+            TextProperty settingName = newUIControl.GetComponent<TextProperty>();
+            settingName.text = settings[i].name;
+
+            //setting position on canvas
+            RectTransform rectTransformComponent = newUIControl.GetComponent<RectTransform>();
+            rectTransformComponent.anchoredPosition = new Vector2(170.0f, i * -rectTransformComponent.sizeDelta.y - 20f);
+
 
         }
 

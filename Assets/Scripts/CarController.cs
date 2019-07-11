@@ -5,6 +5,17 @@ using System.Collections.Generic;
 public class CarController : MonoBehaviour
 {
 
+    //list of variables which can be set from StartupSettings
+    public static List<Setting> settings = new List<Setting> {
+        new BoolSetting("manualControl", false),
+        new FloatSetting("maxMotorTorque", 1000.0f),
+        new FloatSetting("maxSteeringAngle", 45.0f),
+        new IntSetting("steeringSmoothing", 1),
+        new FloatSetting("inputDelay", 0.1f),
+        new FloatSetting("outputDelay", 0.1f),
+        new BoolSetting("averagedInput", true)
+    };
+
     //names of possible inputs and outputs of the neural network
     //list of toggles in StartupSettings will be generated based on these
     public static List<string> possibleInputs = new List<string> { "RayForward", "RayLeftFront45", "RayRightFront45", "RayLeft90", "RayRight90",
