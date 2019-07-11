@@ -110,21 +110,21 @@ public class GameController : MonoBehaviour
 
         //loading settings
         layerCount = StartupSettings.GetIntSetting("layerCount");
-        //neuronsInLayer = StartupSettings.GetIntSetting("neuronsInLayer");
-        //populationSize = StartupSettings.GetIntSetting("populationSize");
-        //passCount = StartupSettings.GetIntSetting("passCount");
-        //mutationPower = StartupSettings.GetFloatSetting("mutationPower");
-        //maxMutation = StartupSettings.GetFloatSetting("maxMutation");
-        //speedupTimeScale = StartupSettings.GetFloatSetting("speedupTimeScale");
-        //checkpointReachDistance = StartupSettings.GetFloatSetting("checkpointReachDistance");
-        //randomAngleMin = StartupSettings.GetFloatSetting("randomAngleMin");
-        //randomAngleMax = StartupSettings.GetFloatSetting("randomAngleMax");
-        //runAcceptMode = (RunAcceptMode)StartupSettings.GetChoiceSetting("runAcceptMode");
-        //terminationDelay = StartupSettings.GetFloatSetting("terminationDelay");
-        //terminationSpeed = StartupSettings.GetFloatSetting("terminationSpeed");
-        //checkpointBonusWeight = StartupSettings.GetFloatSetting("checkpointBonusWeight");
-        //distanceBonusWeight = StartupSettings.GetFloatSetting("distanceBonusWeight");
-        //speedBonusWeight = StartupSettings.GetFloatSetting("speedBonusWeight");
+        neuronsInLayer = StartupSettings.GetIntSetting("neuronsInLayer");
+        populationSize = StartupSettings.GetIntSetting("populationSize");
+        passCount = StartupSettings.GetIntSetting("passCount");
+        mutationPower = StartupSettings.GetFloatSetting("mutationPower");
+        maxMutation = StartupSettings.GetFloatSetting("maxMutation");
+        speedupTimeScale = StartupSettings.GetFloatSetting("speedupTimeScale");
+        checkpointReachDistance = StartupSettings.GetFloatSetting("checkpointReachDistance");
+        randomAngleMin = StartupSettings.GetFloatSetting("randomAngleMin");
+        randomAngleMax = StartupSettings.GetFloatSetting("randomAngleMax");
+        runAcceptMode = (RunAcceptMode)StartupSettings.GetChoiceSetting("runAcceptMode");
+        terminationDelay = StartupSettings.GetFloatSetting("terminationDelay");
+        terminationSpeed = StartupSettings.GetFloatSetting("terminationSpeed");
+        checkpointBonusWeight = StartupSettings.GetFloatSetting("checkpointBonusWeight");
+        distanceBonusWeight = StartupSettings.GetFloatSetting("distanceBonusWeight");
+        speedBonusWeight = StartupSettings.GetFloatSetting("speedBonusWeight");
 
         //getting CarController
         carController = carObject.GetComponent<CarController>();

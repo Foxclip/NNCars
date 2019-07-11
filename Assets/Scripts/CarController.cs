@@ -51,12 +51,12 @@ public class CarController : MonoBehaviour
 
         //loading settings
         manualControl = StartupSettings.GetBoolSetting("manualControl");
-        //maxMotorTorque = StartupSettings.GetFloatSetting("maxMotorTorque");
-        //maxSteeringAngle = StartupSettings.GetFloatSetting("maxSteeringAngle");
-        //steeringSmoothing = StartupSettings.GetIntSetting("steeringSmoothing");
-        //inputDelay = StartupSettings.GetFloatSetting("inputDelay");
-        //outputDelay = StartupSettings.GetFloatSetting("outputDelay");
-        //averagedInput = StartupSettings.GetBoolSetting("averagedInput");
+        maxMotorTorque = StartupSettings.GetFloatSetting("maxMotorTorque");
+        maxSteeringAngle = StartupSettings.GetFloatSetting("maxSteeringAngle");
+        steeringSmoothing = StartupSettings.GetIntSetting("steeringSmoothing");
+        inputDelay = StartupSettings.GetFloatSetting("inputDelay");
+        outputDelay = StartupSettings.GetFloatSetting("outputDelay");
+        averagedInput = StartupSettings.GetBoolSetting("averagedInput");
 
         //Raycasts will hit backfaces of objects
         Physics.queriesHitBackfaces = true;

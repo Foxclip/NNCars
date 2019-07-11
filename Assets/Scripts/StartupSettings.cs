@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
+using System.Linq;
 using SFB;
 
 public class Setting
@@ -74,6 +75,20 @@ public class ChoiceSetting : Setting
 
 }
 
+public class ControlWithSetting
+{
+
+    public GameObject control;
+    public Setting setting;
+
+    public ControlWithSetting(GameObject control, Setting setting)
+    {
+        this.control = control;
+        this.setting = setting;
+    }
+
+}
+
 public class StartupSettings : MonoBehaviour
 {
 
@@ -101,7 +116,7 @@ public class StartupSettings : MonoBehaviour
     private List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
     private List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
 
-    private static List<GameObject> settingsControls = new List<GameObject>();
+    private static List<ControlWithSetting> settingsControls = new List<ControlWithSetting>();
 
     void Start()
     {
@@ -232,75 +247,32 @@ public class StartupSettings : MonoBehaviour
 
     public static int GetIntSetting(string name)
     {
-        foreach (GameObject control in settingsControls)
-        {
-            string linkedName = control.GetComponent<TextProperty>().text;
-            if (linkedName == name)
-            {
-                InputField inputField = control.GetComponent<InputField>();
-                if (inputField == null)
-                {
-                    throw new Exception(String.Format("InputField not found on {0}", name));
-                }
-                return Int32.Parse(inputField.text);
-            }
-        }
-        throw new KeyNotFoundException(String.Format("IntSetting {0} not found"));
+        return ((IntSetting)GetSetting(name)).value;
     }
 
     public static float GetFloatSetting(string name)
     {
-        foreach (GameObject control in settingsControls)
-        {
-            string linkedName = control.GetComponent<TextProperty>().text;
-            if (linkedName == name)
-            {
-                InputField inputField = control.GetComponent<InputField>();
-                if (inputField == null)
-                {
-                    throw new Exception(String.Format("InputField not found on {0}", name));
-                }
-                return float.Parse(inputField.text);
-            }
-        }
-        throw new KeyNotFoundException(String.Format("FloatSetting {0} not found"));
+        return ((FloatSetting)GetSetting(name)).value;
     }
 
     public static bool GetBoolSetting(string name)
     {
-        foreach (GameObject control in settingsControls)
-        {
-            Debug.Log(control);
-            string linkedName = control.GetComponent<TextProperty>().text;
-            if (linkedName == name)
-            {
-                Toggle toggle = control.GetComponent<Toggle>();
-                if(toggle == null)
-                {
-                    throw new Exception(String.Format("Toggle not found on {0}", name));
-                }
-                return toggle.isOn;
-            }
-        }
-        throw new KeyNotFoundException(String.Format("BoolSetting {0} not found"));
+        return ((BoolSetting)GetSetting(name)).value;
     }
 
     public static int GetChoiceSetting(string name)
     {
-        foreach (GameObject control in settingsControls)
+        return ((ChoiceSetting)GetSetting(name)).value;
+    }
+
+    private static Setting GetSetting(string name)
+    {
+        List<Setting> matchingSettings = (from controlSetting in settingsControls where controlSetting.setting.name == name select controlSetting.setting).ToList();
+        if(matchingSettings.Count == 0)
         {
-            string linkedName = control.GetComponent<TextProperty>().text;
-            if (linkedName == name)
-            {
-                Dropdown dropdown = control.GetComponent<Dropdown>();
-                if (dropdown == null)
-                {
-                    throw new Exception(String.Format("Dropdown not found on {0}", name));
-                }
-                return dropdown.value;
-            }
+            throw new KeyNotFoundException(String.Format("Setting {0} not found", name));
         }
-        throw new KeyNotFoundException(String.Format("ChoiceSetting {0} not found"));
+        return matchingSettings[0];
     }
 
     void GenerateSettingsUIControls()
@@ -353,7 +325,7 @@ public class StartupSettings : MonoBehaviour
                 dropdown.value = setting.value;
             }
 
-            settingsControls.Add(newUIControl);
+            settingsControls.Add(new ControlWithSetting(newUIControl, settings[i]));
             newUIControl.transform.SetParent(labelTextObject.transform, false);
 
             //related input name will be tied to it
@@ -489,7 +461,21 @@ public class StartupSettings : MonoBehaviour
 
     public void StartSimulation()
     {
+
+        //GameObjects are going to be destroyed, so data has to be saved
+        foreach(ControlWithSetting controlSetting in settingsControls)
+        {
+            switch(controlSetting.setting.GetType().Name)
+            {
+                case nameof(IntSetting):    ((IntSetting)controlSetting.setting).value    = Int32.Parse(controlSetting.control.GetComponent<TMP_InputField>().text); break;
+                case nameof(FloatSetting):  ((FloatSetting)controlSetting.setting).value  = float.Parse(controlSetting.control.GetComponent<TMP_InputField>().text); break;
+                case nameof(BoolSetting):   ((BoolSetting)controlSetting.setting).value   = controlSetting.control.GetComponent<Toggle>().isOn;                      break;
+                case nameof(ChoiceSetting): ((ChoiceSetting)controlSetting.setting).value = controlSetting.control.GetComponent<TMP_Dropdown>().value;               break;
+            }
+        }
+
         SceneManager.LoadScene("MainScene");
+
     }
 
 }
