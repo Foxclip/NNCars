@@ -333,25 +333,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51c7a07893f0df84293c341ef632b748, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  layerCount: 1
-  neuronsInLayer: 2
-  populationSize: 10
-  passCount: 5
-  crossoverPower: 2
-  mutationPower: 3
-  maxMutation: 1
-  speedupTimeScale: 100
-  checkpointReachDistance: 5
-  randomAngleMin: -25
-  randomAngleMax: 25
-  runAcceptMode: 0
-  carObject: {fileID: 223974226}
-  terminationDelay: 1
-  terminationSpeed: 0.5
-  checkpointBonusWeight: 100
-  distanceBonusWeight: 10
-  speedBonusWeight: 1
-  networksFolderPath: Networks/
   genRunPassText: {fileID: 1373539048}
   passFitnessText: {fileID: 1401649692}
   maxFitnessText: {fileID: 1783081641}
@@ -361,10 +342,8 @@ MonoBehaviour:
   timeText: {fileID: 330059488}
   speedDeathTimerText: {fileID: 1464792296}
   fitnessDeathTimerText: {fileID: 143595037}
-  generation: []
-  collisionDetected: 0
-  nextCheckpoint: 0
-  passFitness: 0
+  carObject: {fileID: 223974226}
+  networksFolderPath: Networks/
 --- !u!4 &79375511
 Transform:
   m_ObjectHideFlags: 0

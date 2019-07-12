@@ -1,15 +1,102 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿// <copyright file="GameController.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Class related to simulation.
+/// </summary>
 public class GameController : MonoBehaviour
 {
+#pragma warning disable IDE0044 // Add readonly modifier
 
-    //list of variables which can be set from StartupSettings
-    public static List<Setting> settings = new List<Setting>() {
+    // UI text
+    [SerializeField]
+    private Text genRunPassText;
+    [SerializeField]
+    private Text passFitnessText;
+    [SerializeField]
+    private Text maxFitnessText;
+    [SerializeField]
+    private Text bestCarText;
+    [SerializeField]
+    private Text minTimeText;
+    [SerializeField]
+    private Text breakthroughCountText;
+    [SerializeField]
+    private Text timeText;
+    [SerializeField]
+    private Text speedDeathTimerText;
+    [SerializeField]
+    private Text fitnessDeathTimerText;
+
+    [SerializeField]
+    private GameObject carObject;                    // GameObject of the car
+    [SerializeField]
+    private string networksFolderPath = "Networks/"; // folder which neural networks are saved to
+
+#pragma warning restore IDE0044 // Add readonly modifier
+
+    private int layerCount = 1;                      // number of hidden layers neural network will have
+    private int neuronsInLayer = 16;                 // number of neurons in hidden layers
+    private int populationSize = 10;                 // number of diffrerent neural networks in generation
+    private int passCount = 3;                       // to improve stability of the solution, several passes are made for each neural network
+    private float mutationPower = 10;                // how likely small mutations are
+    private float maxMutation = 1;                   // maximal amount of mutation in generation
+    private float speedupTimeScale = 10;             // when pressing Space, simulation will speed up
+    private float checkpointReachDistance = 3.0f;    // checkpoint is counted as reached when car is within this distance
+    private double randomAngleMin = -25.0;           // minimal angle of random rotation in the beginning of each pass
+    private double randomAngleMax = 25.0;            // maximal angle
+
+    private RunAcceptMode runAcceptMode;             // determines how fitness of the run is calculated
+
+    private double terminationDelay = 1.0;           // pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time
+    private double terminationSpeed = 0.2;           // what speed is too low
+    private double checkpointBonusWeight = 100.0;    // weight of the checkpoint bonus
+    private double distanceBonusWeight = 10.0;       // weight of the distance bonus
+    private double speedBonusWeight = 0.01;          // weight of the speed bonus
+
+    private CarController carController;                                    // CarController script
+    private Transform track;                                                // transform of the track
+#pragma warning disable SA1214 // Readonly fields should appear before non-readonly fields
+    private readonly List<Transform> checkpoints = new List<Transform>();   // list of all checkpoints in the track
+#pragma warning restore SA1214 // Readonly fields should appear before non-readonly fields
+    private Transform carSpawnPoint;                                        // where car will be placed before strting a pass
+    private NeuralNetwork bestNetwork;                                      // best result of the simulation
+    private double bestFitnessInThisPass = 0.0;                             // best fitness achieved in this pass, pass is ended if it does not imporve for some amount of time
+    private List<Pass> passes;                                              // list of passes in the run, used to calculate fitness of the run
+    private double fitnessDeathTimer = 0.0;                                 // how much time passed since last improvement of bestFitnessInThisPass
+    private double speedDeathTimer = 0.0;                                   // how much time passed since speed was not too low
+    private int generationIndex = 0;                                        // index of current generation
+    private int runIndex = 0;                                               // index of current run
+    private int passIndex = 0;                                              // index of current pass
+    private double bestRunFitness = 0.0;                                    // best fitness achieved in this simulation
+    private int breakthroughGen = 0;                                        // index of generation where best fitness was achieved
+    private int breakthroughRun = 0;                                        // index of run where best fitness was achieved
+    private double timer = 0.0;                                             // time since start of the pass
+    private double distance = 0.0;                                          // how much distance car has covered in this pass
+    private double acceptedMinTime = -1.0;                                  // how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
+    private Vector3 previousPosition;                                       // position of the car in previous frame
+    private int breakthroughCount = 0;                                      // how much fitness improvements happened with this neural network
+    private bool fastForward = false;                                       // whether fast forward function is activated
+
+    private enum RunAcceptMode
+    {
+        All,
+        Median,
+    }
+
+    /// <summary>
+    /// List of settings available to be set from StartupSettings screen.
+    /// </summary>
+    public static List<Setting> Settings { get; set; } = new List<Setting>()
+    {
         new IntSetting("layerCount", 1),
         new IntSetting("neuronsInLayer", 2),
         new IntSetting("populationSize", 10),
@@ -25,539 +112,464 @@ public class GameController : MonoBehaviour
         new FloatSetting("terminationSpeed", 0.5f),
         new FloatSetting("checkpointBonusWeight", 100.0f),
         new FloatSetting("distanceBonusWeight", 10.0f),
-        new FloatSetting("speedBonusWeight", 1.0f)
+        new FloatSetting("speedBonusWeight", 1.0f),
     };
 
-    public int layerCount = 1;                      //number of hidden layers neural network will have
-    public int neuronsInLayer = 16;                 //number of neurons in hidden layers
-    public int populationSize = 10;                 //number of diffrerent neural networks in generation
-    public int passCount = 3;                       //to improve stability of the solution, several passes are made for each neural network
-    public float mutationPower = 10;                //how likely small mutations are
-    public float maxMutation = 1;                   //maximal amount of mutation in generation
-    public float speedupTimeScale = 10;             //when pressing Space, simulation will speed up
-    public float checkpointReachDistance = 3.0f;    //checkpoint is counted as reached when car is within this distance
-    public double randomAngleMin = -25.0;           //minimal angle of random rotation in the beginning of each pass
-    public double randomAngleMax = 25.0;            //maximal angle
-    public enum RunAcceptMode
-    {
-        All,
-        Median
-    };
-    public RunAcceptMode runAcceptMode;             //determines how fitness of the run is calculated
+    /// <summary>
+    /// Current generation of neural netwroks.
+    /// </summary>
+    public List<NeuralNetwork> Generation { get; set; } = new List<NeuralNetwork>();
 
-    public GameObject carObject;                    //GameObject of the car
-    public double terminationDelay = 1.0;           //pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time
-    public double terminationSpeed = 0.2;           //what speed is too low
-    public double checkpointBonusWeight = 100.0;    //weight of the checkpoint bonus
-    public double distanceBonusWeight = 10.0;       //weight of the distance bonus
-    public double speedBonusWeight = 0.01;          //weight of the speed bonus
+    /// <summary>
+    /// Car collided with a wall.
+    /// </summary>
+    public bool CollisionDetected { get; set; } = false;
 
-    public string networksFolderPath = "Networks/"; //folder which neural networks are saved to
+    /// <summary>
+    /// Index of the next checkpoint.
+    /// </summary>
+    public int NextCheckpoint { get; set; } = 0;
 
-    //UI text
-    public Text genRunPassText;
-    public Text passFitnessText;
-    public Text maxFitnessText;
-    public Text bestCarText;
-    public Text minTimeText;
-    public Text breakthroughCountText;
-    public Text timeText;
-    public Text speedDeathTimerText;
-    public Text fitnessDeathTimerText;
-
-    [HideInInspector]
-    public List<NeuralNetwork> generation = new List<NeuralNetwork>();  //current generation of neural networks
-    [HideInInspector]
-    public bool collisionDetected = false;                              //car collided with a wall
-    [HideInInspector]
-    public int nextCheckpoint = 0;                                      //index of the next checkpoint
-    [HideInInspector]
-    public double passFitness;                                          //fitness of the current pass
-
-    //this is needed to calculate fitness of the run
-    private struct Pass
-    {
-        public double fitness;
-        public double time;
-        public double nextCheckpoint;
-    };
-
-    private CarController carController;                                    //CarController script
-    private Transform track;                                                //transform of the track
-    private Transform carSpawnPoint;                                        //where car will be placed before strting a pass
-    private readonly List<Transform> checkpoints = new List<Transform>();   //list of all checkpoints in the track
-    private NeuralNetwork bestNetwork;                                      //best result of the simulation
-    private double bestFitnessInThisPass = 0.0;                             //best fitness achieved in this pass, pass is ended if it does not imporve for some amount of time
-    private List<Pass> passes;                                              //list of passes in the run, used to calculate fitness of the run
-    private double fitnessDeathTimer = 0.0;                                 //how much time passed since last improvement of bestFitnessInThisPass
-    private double speedDeathTimer = 0.0;                                   //how much time passed since speed was not too low
-    private int generationIndex = 0;                                        //index of current generation
-    private int runIndex = 0;                                               //index of current run
-    private int passIndex = 0;                                              //index of current pass
-    private double bestRunFitness = 0.0;                                    //best fitness achieved in this simulation
-    private int breakthroughGen = 0;                                        //index of generation where best fitness was achieved
-    private int breakthroughRun = 0;                                        //index of run where best fitness was achieved
-    private double timer = 0.0;                                             //time since start of the pass
-    private double distance = 0.0;                                          //how much distance car has covered in this pass
-    private double acceptedMinTime = -1.0;                                  //how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
-    private Vector3 previousPosition;                                       //position of the car in previous frame
-    private int breakthroughCount = 0;                                      //how much fitness improvements happened with this neural network
-
-    private bool fastForward = false;                                       //whether fast forward function is activated
+    /// <summary>
+    /// Fitness of the current pass.
+    /// </summary>
+    public double PassFitness { get; set; }
 
 #pragma warning disable IDE0051 // Remove unused private members
-    void Start()
+    private void Start()
 #pragma warning restore IDE0051 // Remove unused private members
     {
+        // loading settings
+        this.layerCount = StartupSettings.GetIntSetting("layerCount");
+        this.neuronsInLayer = StartupSettings.GetIntSetting("neuronsInLayer");
+        this.populationSize = StartupSettings.GetIntSetting("populationSize");
+        this.passCount = StartupSettings.GetIntSetting("passCount");
+        this.mutationPower = StartupSettings.GetFloatSetting("mutationPower");
+        this.maxMutation = StartupSettings.GetFloatSetting("maxMutation");
+        this.speedupTimeScale = StartupSettings.GetFloatSetting("speedupTimeScale");
+        this.checkpointReachDistance = StartupSettings.GetFloatSetting("checkpointReachDistance");
+        this.randomAngleMin = StartupSettings.GetFloatSetting("randomAngleMin");
+        this.randomAngleMax = StartupSettings.GetFloatSetting("randomAngleMax");
+        this.runAcceptMode = (RunAcceptMode)StartupSettings.GetChoiceSetting("runAcceptMode");
+        this.terminationDelay = StartupSettings.GetFloatSetting("terminationDelay");
+        this.terminationSpeed = StartupSettings.GetFloatSetting("terminationSpeed");
+        this.checkpointBonusWeight = StartupSettings.GetFloatSetting("checkpointBonusWeight");
+        this.distanceBonusWeight = StartupSettings.GetFloatSetting("distanceBonusWeight");
+        this.speedBonusWeight = StartupSettings.GetFloatSetting("speedBonusWeight");
 
-        //loading settings
-        layerCount = StartupSettings.GetIntSetting("layerCount");
-        neuronsInLayer = StartupSettings.GetIntSetting("neuronsInLayer");
-        populationSize = StartupSettings.GetIntSetting("populationSize");
-        passCount = StartupSettings.GetIntSetting("passCount");
-        mutationPower = StartupSettings.GetFloatSetting("mutationPower");
-        maxMutation = StartupSettings.GetFloatSetting("maxMutation");
-        speedupTimeScale = StartupSettings.GetFloatSetting("speedupTimeScale");
-        checkpointReachDistance = StartupSettings.GetFloatSetting("checkpointReachDistance");
-        randomAngleMin = StartupSettings.GetFloatSetting("randomAngleMin");
-        randomAngleMax = StartupSettings.GetFloatSetting("randomAngleMax");
-        runAcceptMode = (RunAcceptMode)StartupSettings.GetChoiceSetting("runAcceptMode");
-        terminationDelay = StartupSettings.GetFloatSetting("terminationDelay");
-        terminationSpeed = StartupSettings.GetFloatSetting("terminationSpeed");
-        checkpointBonusWeight = StartupSettings.GetFloatSetting("checkpointBonusWeight");
-        distanceBonusWeight = StartupSettings.GetFloatSetting("distanceBonusWeight");
-        speedBonusWeight = StartupSettings.GetFloatSetting("speedBonusWeight");
+        // getting CarController
+        this.carController = this.carObject.GetComponent<CarController>();
 
-        //getting CarController
-        carController = carObject.GetComponent<CarController>();
-
-        //loading track
+        // loading track
         Transform tracksParent = GameObject.Find("Tracks").transform;
-        foreach(Transform t in tracksParent)
+        foreach (Transform t in tracksParent)
         {
             t.gameObject.SetActive(false);
         }
-        track = tracksParent.GetChild(StartupSettings.trackIndex);
-        track.gameObject.SetActive(true);
+        this.track = tracksParent.GetChild(StartupSettings.trackIndex);
+        this.track.gameObject.SetActive(true);
 
-        //loading spawn point
-        carSpawnPoint = track.Find("Spawn");
+        // loading spawn point
+        this.carSpawnPoint = this.track.Find("Spawn");
 
-        //loading checkpoints
-        Transform checkpointsParent = track.Find("Checkpoints");
+        // loading checkpoints
+        Transform checkpointsParent = this.track.Find("Checkpoints");
         foreach (Transform child in checkpointsParent)
         {
-            checkpoints.Add(child);
+            this.checkpoints.Add(child);
         }
 
-        //loading neural network or creating new one
+        // loading neural network or creating new one
         if (StartupSettings.neuralNetwork != null)
         {
-            bestNetwork = StartupSettings.neuralNetwork;
-            breakthroughCount = bestNetwork.breakthroughCount;
+            this.bestNetwork = StartupSettings.neuralNetwork;
+            this.breakthroughCount = this.bestNetwork.breakthroughCount;
             if (!StartupSettings.resetFitness)
             {
-                bestRunFitness = bestNetwork.fitness;
+                this.bestRunFitness = this.bestNetwork.fitness;
             }
         }
         else
         {
-            bestNetwork = new NeuralNetwork(StartupSettings.registeredInputs, StartupSettings.registeredOutputs, layerCount, neuronsInLayer);
+            this.bestNetwork = new NeuralNetwork(StartupSettings.registeredInputs, StartupSettings.registeredOutputs, this.layerCount, this.neuronsInLayer);
         }
 
-        //preparing simulation
-        PreGeneration();
-        PreRun();
-        PrePass();
-
+        // preparing simulation
+        this.PreGeneration();
+        this.PreRun();
+        this.PrePass();
     }
 
 #pragma warning disable IDE0051 // Remove unused private members
-    void Update()
+    private void Update()
 #pragma warning restore IDE0051 // Remove unused private members
     {
         if (Input.GetKeyDown("space"))
         {
-            //fast forward function
-            if (fastForward)
+            // fast forward function
+            if (this.fastForward)
             {
                 Time.timeScale = 1.0f;
-            } else
-            {
-                Time.timeScale = speedupTimeScale;
             }
-            fastForward = !fastForward;
+            else
+            {
+                Time.timeScale = this.speedupTimeScale;
+            }
+            this.fastForward = !this.fastForward;
         }
     }
 
 #pragma warning disable IDE0051 // Remove unused private members
-    void FixedUpdate()
+    private void FixedUpdate()
 #pragma warning restore IDE0051 // Remove unused private members
     {
-
-        distance += Vector3.Distance(carObject.transform.position, previousPosition);
-        previousPosition = carObject.transform.position;
-        timer += Time.fixedDeltaTime;
-
-        if(CheckDeathConditions())
+        this.distance += Vector3.Distance(this.carObject.transform.position, this.previousPosition);
+        this.previousPosition = this.carObject.transform.position;
+        this.timer += Time.fixedDeltaTime;
+        if (this.CheckDeathConditions())
         {
             return;
         }
 
-        UpdateDeathTimers();
+        this.UpdateDeathTimers();
 
-        AddBonuses();
+        this.AddBonuses();
 
-        UpdateUIText();
-
+        this.UpdateUIText();
     }
 
-    bool CheckDeathConditions()
+    private bool CheckDeathConditions()
     {
-        if (fitnessDeathTimer > terminationDelay || speedDeathTimer > terminationDelay || carObject.transform.position.y < 0.0f || collisionDetected || nextCheckpoint >= checkpoints.Count)
+        if (this.fitnessDeathTimer > this.terminationDelay || this.speedDeathTimer > this.terminationDelay || this.carObject.transform.position.y < 0.0f || this.CollisionDetected || this.NextCheckpoint >= this.checkpoints.Count)
         {
-            if (fitnessDeathTimer > terminationDelay)
+            if (this.fitnessDeathTimer > this.terminationDelay)
             {
-                Debug.Log("FITNESS Max: " + bestFitnessInThisPass + " Current: " + passFitness);
+                Debug.Log("FITNESS Max: " + this.bestFitnessInThisPass + " Current: " + this.PassFitness);
             }
-            if (speedDeathTimer > terminationDelay)
+            if (this.speedDeathTimer > this.terminationDelay)
             {
                 Debug.Log("SPEED");
             }
-            if (carObject.transform.position.y < 0.0f)
+            if (this.carObject.transform.position.y < 0.0f)
             {
                 Debug.Log("FALL");
             }
-            if (collisionDetected)
+            if (this.CollisionDetected)
             {
                 Debug.Log("COLLISION");
             }
-            if(nextCheckpoint >= checkpoints.Count)
+            if (this.NextCheckpoint >= this.checkpoints.Count)
             {
                 Debug.Log("FINISH");
             }
-            NextPass();
+            this.NextPass();
             return true;
         }
         return false;
     }
 
-    void UpdateDeathTimers()
+    private void UpdateDeathTimers()
     {
-
-        //fitness timer
-        if (passFitness <= bestFitnessInThisPass)
+        // fitness timer
+        if (this.PassFitness <= this.bestFitnessInThisPass)
         {
-            fitnessDeathTimer += Time.fixedDeltaTime;
+            this.fitnessDeathTimer += Time.fixedDeltaTime;
         }
         else
         {
-            fitnessDeathTimer = 0.0;
-            bestFitnessInThisPass = passFitness;
+            this.fitnessDeathTimer = 0.0;
+            this.bestFitnessInThisPass = this.PassFitness;
         }
 
-        //speed timer
-        double currentCarVelocity = carObject.GetComponent<Rigidbody>().velocity.magnitude;
-        if (currentCarVelocity < terminationSpeed)
+        // speed timer
+        double currentCarVelocity = this.carObject.GetComponent<Rigidbody>().velocity.magnitude;
+        if (currentCarVelocity < this.terminationSpeed)
         {
-            speedDeathTimer += Time.fixedDeltaTime;
+            this.speedDeathTimer += Time.fixedDeltaTime;
         }
         else
         {
-            speedDeathTimer = 0.0;
+            this.speedDeathTimer = 0.0;
         }
-
     }
 
-    void AddBonuses()
+    private void AddBonuses()
     {
-
-        //has to update next checkpoint first
-        if (nextCheckpoint < checkpoints.Count)
+        // has to update next checkpoint first
+        if (this.NextCheckpoint < this.checkpoints.Count)
         {
-            if (Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position) < checkpointReachDistance)
+            if (Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position) < this.checkpointReachDistance)
             {
-                nextCheckpoint++;
+                this.NextCheckpoint++;
             }
         }
 
-        //distance bonus
+        // distance bonus
         double distanceBonus = 0.0;
-        if (nextCheckpoint < checkpoints.Count)
+        if (this.NextCheckpoint < this.checkpoints.Count)
         {
-            float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
-            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * distanceBonusWeight;
+            float distanceToNextCheckpoint = Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position);
+            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * this.distanceBonusWeight;
         }
 
-        //checkpoint bonus
-        double checkpointBonus = nextCheckpoint * checkpointBonusWeight;
+        // checkpoint bonus
+        double checkpointBonus = this.NextCheckpoint * this.checkpointBonusWeight;
 
-        passFitness = checkpointBonus + distanceBonus;
-
+        this.PassFitness = checkpointBonus + distanceBonus;
     }
 
-    void UpdateUIText()
+    private void UpdateUIText()
     {
-        genRunPassText.text = "GEN " + generationIndex + " RUN " + runIndex + " PASS " + passIndex;
-        passFitnessText.text = "PASS FITNESS: " + passFitness;
-        maxFitnessText.text = "MAX FITNESS: " + bestRunFitness;
-        bestCarText.text = "BEST: GEN " + breakthroughGen + " RUN " + breakthroughRun;
-        minTimeText.text = "MIN TIME: " + acceptedMinTime;
-        breakthroughCountText.text = "BREAKTHROUGHS: " + breakthroughCount;
-        timeText.text = "TIME: " + timer;
-        speedDeathTimerText.text = String.Format("SPD: {0:0.0}", speedDeathTimer);
-        fitnessDeathTimerText.text = String.Format("FIT: {0:0.0}", fitnessDeathTimer);
+        this.genRunPassText.text = "GEN " + this.generationIndex + " RUN " + this.runIndex + " PASS " + this.passIndex;
+        this.passFitnessText.text = "PASS FITNESS: " + this.PassFitness;
+        this.maxFitnessText.text = "MAX FITNESS: " + this.bestRunFitness;
+        this.bestCarText.text = "BEST: GEN " + this.breakthroughGen + " RUN " + this.breakthroughRun;
+        this.minTimeText.text = "MIN TIME: " + this.acceptedMinTime;
+        this.breakthroughCountText.text = "BREAKTHROUGHS: " + this.breakthroughCount;
+        this.timeText.text = "TIME: " + this.timer;
+        this.speedDeathTimerText.text = string.Format("SPD: {0:0.0}", this.speedDeathTimer);
+        this.fitnessDeathTimerText.text = string.Format("FIT: {0:0.0}", this.fitnessDeathTimer);
     }
 
-    void CheckBestResult(double runFitness, double runMinTime)
+    private void CheckBestResult(double runFitness, double runMinTime)
     {
-        //has to be in here so it will be saved in the file
-        generation[runIndex].fitness = runFitness;
+        // has to be in here so it will be saved in the file
+        this.Generation[this.runIndex].fitness = runFitness;
 
-        //updating fitness and best results
-        //if it is same neural network (run 0), result is not accepted, except if it is first update
-        if (runFitness > bestRunFitness && (runIndex > 0 || bestRunFitness == 0.0))
+        // updating fitness and best results
+        // if it is same neural network (run 0), result is not accepted, except if it is first update
+        if (runFitness > this.bestRunFitness && (this.runIndex > 0 || this.bestRunFitness == 0.0))
         {
+            // new breakthrough, new breakthough count
+            this.breakthroughCount++;
+            this.Generation[this.runIndex].breakthroughCount = this.breakthroughCount;
 
-            //new breakthrough, new breakthough count
-            breakthroughCount++;
-            generation[runIndex].breakthroughCount = breakthroughCount;
+            // updating index of best run
+            this.bestRunFitness = runFitness;
+            this.breakthroughGen = this.generationIndex;
+            this.breakthroughRun = this.runIndex;
 
-            //updating index of best run
-            bestRunFitness = runFitness;
-            breakthroughGen = generationIndex;
-            breakthroughRun = runIndex;
-
-            //saving best neural network to file
-            string trackName = track.name.Replace(" ", "");
+            // saving best neural network to file
+            string trackName = this.track.name.Replace(" ", string.Empty);
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            string bcString = "bc" + breakthroughCount;
-            string genRunString = "g" + generationIndex + "r" + runIndex;
+            string bcString = "bc" + this.breakthroughCount;
+            string genRunString = "g" + this.generationIndex + "r" + this.runIndex;
             string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".txt";
-            Directory.CreateDirectory(networksFolderPath);
-            generation[runIndex].SaveToFile(StartupSettings.networksFolderPath + "/" + filePath);
-
+            Directory.CreateDirectory(this.networksFolderPath);
+            this.Generation[this.runIndex].SaveToFile(StartupSettings.networksFolderPath + "/" + filePath);
         }
 
-        //updating best time
-        //if run 0 improves time, it will be updated, but max fitness will not
-        if (runMinTime >= 0.0 && (runMinTime < acceptedMinTime || acceptedMinTime < 0.0))
+        // updating best time
+        // if run 0 improves time, it will be updated, but max fitness will not
+        if (runMinTime >= 0.0 && (runMinTime < this.acceptedMinTime || this.acceptedMinTime < 0.0))
         {
-            acceptedMinTime = runMinTime;
+            this.acceptedMinTime = runMinTime;
         }
-
     }
 
-    //is called after generation is complete
-    void PostGeneration()
+    // is called after generation is complete
+    private void PostGeneration()
     {
+        this.Generation.Sort((x, y) => -x.fitness.CompareTo(y.fitness));
 
-        generation.Sort((x, y) => -x.fitness.CompareTo(y.fitness));
-
-        //if we have new best result
-        if (generation[0].fitness > bestNetwork.fitness)
+        // if we have new best result
+        if (this.Generation[0].fitness > this.bestNetwork.fitness)
         {
-            bestNetwork = generation[0];
+            this.bestNetwork = this.Generation[0];
         }
-
     }
 
-    //called just after starting new generation
-    void PreGeneration()
+    // called just after starting new generation
+    private void PreGeneration()
     {
-
-        //creating new neural networks
+        // creating new neural networks
         List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
-        for (int i = 0; i < populationSize; i++)
+        for (int i = 0; i < this.populationSize; i++)
         {
-            //WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
-            NeuralNetwork newNetwork = bestNetwork.Copy();
-            newNetwork.Mutate(1, maxMutation * Math.Pow((double)i / populationSize, mutationPower));
+            // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
+            NeuralNetwork newNetwork = this.bestNetwork.Copy();
+            newNetwork.Mutate(1, this.maxMutation * Math.Pow((double)i / this.populationSize, this.mutationPower));
             newGeneration.Add(newNetwork);
         }
 
-        //swapping generations
-        generation = new List<NeuralNetwork>(newGeneration);
+        // swapping generations
+        this.Generation = new List<NeuralNetwork>(newGeneration);
 
-        runIndex = 0;
-
+        this.runIndex = 0;
     }
 
-    //proceed to the next generation
-    void NextGeneration()
+    // proceed to the next generation
+    private void NextGeneration()
     {
+        this.PostGeneration();
 
-        PostGeneration();
+        this.generationIndex++;
 
-        generationIndex++;
-
-        PreGeneration();
-
+        this.PreGeneration();
     }
 
-    //called after run is complete
-    void PostRun()
+    // called after run is complete
+    private void PostRun()
     {
-
-        //calculating fitness of the run
+        /* calculating fitness of the run*/
 
         double runMinTime = -1.0;
         double runFitness = 0.0;
 
-        //if mode is Median, we take median pass
-        if (runAcceptMode == RunAcceptMode.Median)
+        // if mode is Median, we take median pass
+        if (this.runAcceptMode == RunAcceptMode.Median)
         {
-            Pass medianPass = passes[(passes.Count - 1) / 2];
-            runFitness = medianPass.fitness;
-            if(medianPass.nextCheckpoint >= checkpoints.Count)
+            Pass medianPass = this.passes[(this.passes.Count - 1) / 2];
+            runFitness = medianPass.Fitness;
+            if (medianPass.NextCheckpoint >= this.checkpoints.Count)
             {
-                runMinTime = medianPass.time;
-            }
-        }
-        //if it is All, we take the worst pass
-        else if (runAcceptMode == RunAcceptMode.All)
-        {
-            passes.Sort((x, y) => x.fitness.CompareTo(y.fitness));
-            runFitness = passes[0].fitness;
-            if(passes[0].nextCheckpoint >= checkpoints.Count)
-            {
-                runMinTime = passes[0].time;
+                runMinTime = medianPass.Time;
             }
         }
 
-        //check if result of this run is the best one
-        CheckBestResult(runFitness, runMinTime);
+        // if it is All, we take the worst pass
+        else if (this.runAcceptMode == RunAcceptMode.All)
+        {
+            this.passes.Sort((x, y) => x.Fitness.CompareTo(y.Fitness));
+            runFitness = this.passes[0].Fitness;
+            if (this.passes[0].NextCheckpoint >= this.checkpoints.Count)
+            {
+                runMinTime = this.passes[0].Time;
+            }
+        }
 
+        // check if result of this run is the best one
+        this.CheckBestResult(runFitness, runMinTime);
     }
 
-    //called just after starting new run
-    void PreRun()
+    // called just after starting new run
+    private void PreRun()
     {
+        // initializing neural network
+        NeuralNetwork network = this.Generation[this.runIndex];
+        this.carController.neuralNetwork = network;
 
-        //initializing neural network
-        NeuralNetwork network = generation[runIndex];
-        carController.neuralNetwork = network;
+        // list of passes has to be cleared
+        this.passes = new List<Pass>();
 
-        //list of passes has to be cleared
-        passes = new List<Pass>();
-
-        passIndex = 0;
-
+        this.passIndex = 0;
     }
 
-    //called after completing a pass
-    bool PostPass()
+    // called after completing a pass
+    private bool PostPass()
     {
-
-        //speed and time bonuses
-        //if the car completes the track, it gets time bonus
-        //otherwise, it gets speed bonus
+        // speed and time bonuses
+        // if the car completes the track, it gets time bonus
+        // otherwise, it gets speed bonus
         double speedBonus;
         double timeBonus;
-        if (nextCheckpoint < checkpoints.Count)
+        if (this.NextCheckpoint < this.checkpoints.Count)
         {
-            double averageSpeed = distance / timer;
-            speedBonus = Math.Tanh(averageSpeed * speedBonusWeight);
+            double averageSpeed = this.distance / this.timer;
+            speedBonus = Math.Tanh(averageSpeed * this.speedBonusWeight);
             timeBonus = 0.0;
         }
         else
         {
             speedBonus = 0.0;
-            timeBonus = 1.0 / (timer + 1.0);
+            timeBonus = 1.0 / (this.timer + 1.0);
         }
-        double savedFitness = passFitness;
-        passFitness += speedBonus;
-        passFitness += timeBonus;
+        double savedFitness = this.PassFitness;
+        this.PassFitness += speedBonus;
+        this.PassFitness += timeBonus;
 
-        //adding this pass to the list
+        // adding this pass to the list
         Pass pass = new Pass
         {
-            fitness = passFitness,
-            time = timer,
-            nextCheckpoint = nextCheckpoint
+            Fitness = this.PassFitness,
+            Time = this.timer,
+            NextCheckpoint = this.NextCheckpoint,
         };
-        passes.Add(pass);
+        this.passes.Add(pass);
 
-        //distance bonus (not added to passFitness, used only for debug)
+        // distance bonus (not added to passFitness, used only for debug)
         double distanceBonus = 0.0;
-        if (nextCheckpoint < checkpoints.Count)
+        if (this.NextCheckpoint < this.checkpoints.Count)
         {
-            float distanceToNextCheckpoint = Vector3.Distance(carObject.transform.position, checkpoints[nextCheckpoint].position);
+            float distanceToNextCheckpoint = Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position);
             distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
         }
-        //checkpoint bonus (not added to pass fitness, used only for debug)
-        double checkpointBonus = nextCheckpoint * 100.0;
 
-        Debug.Log("Pass fitness: " + passFitness + " Nsb: " + savedFitness + " Time: " + timer + " Distance: " + distance + " Avg sp: " + distance / timer);
+        // checkpoint bonus (not added to pass fitness, used only for debug)
+        double checkpointBonus = this.NextCheckpoint * 100.0;
+
+        Debug.Log("Pass fitness: " + this.PassFitness + " Nsb: " + savedFitness + " Time: " + this.timer + " Distance: " + this.distance + " Avg sp: " + (this.distance / this.timer));
         Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
 
-        //if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
-        if(runAcceptMode == RunAcceptMode.All && passFitness < bestRunFitness)
+        // if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
+        if (this.runAcceptMode == RunAcceptMode.All && this.PassFitness < this.bestRunFitness)
         {
             return true;
         }
 
         return false;
-
     }
 
-    void PrePass()
+    private void PrePass()
     {
-        //resetting car parameters
-        carObject.transform.position = carSpawnPoint.transform.position;
-        carObject.transform.rotation = carSpawnPoint.transform.rotation;
-        carObject.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
-        carObject.GetComponent<Rigidbody>().angularVelocity = new Vector3(0.0f, 0.0f, 0.0f);
-        fitnessDeathTimer = 0.0;
-        speedDeathTimer = 0.0;
-        bestFitnessInThisPass = 0.0;
-        distance = 0.0;
-        previousPosition = carSpawnPoint.transform.position;
-        timer = 0.0;
-        nextCheckpoint = 0;
-        collisionDetected = false;
-        passFitness = 0;
-        carController.ResetQueues();
+        // resetting car parameters
+        this.carObject.transform.position = this.carSpawnPoint.transform.position;
+        this.carObject.transform.rotation = this.carSpawnPoint.transform.rotation;
+        this.carObject.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
+        this.carObject.GetComponent<Rigidbody>().angularVelocity = new Vector3(0.0f, 0.0f, 0.0f);
+        this.fitnessDeathTimer = 0.0;
+        this.speedDeathTimer = 0.0;
+        this.bestFitnessInThisPass = 0.0;
+        this.distance = 0.0;
+        this.previousPosition = this.carSpawnPoint.transform.position;
+        this.timer = 0.0;
+        this.NextCheckpoint = 0;
+        this.CollisionDetected = false;
+        this.PassFitness = 0;
+        this.carController.ResetQueues();
 
-        //randomized rotation
-        carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(passIndex, 0, passCount - 1, randomAngleMin, randomAngleMax));
+        // randomized rotation
+        this.carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(this.passIndex, 0, this.passCount - 1, this.randomAngleMin, this.randomAngleMax));
 
-        Debug.Log("Generation " + generationIndex + " Car: " + runIndex + " Pass: " + passIndex + " Max: " + bestRunFitness + " Gen: " + breakthroughGen + " Car: " + breakthroughRun);
-
+        Debug.Log("Generation " + this.generationIndex + " Car: " + this.runIndex + " Pass: " + this.passIndex + " Max: " + this.bestRunFitness + " Gen: " + this.breakthroughGen + " Car: " + this.breakthroughRun);
     }
 
-    //proceed to the next run
-    void NextRun()
+    // proceed to the next run
+    private void NextRun()
     {
+        this.PostRun();
 
-        PostRun();
+        this.runIndex++;
 
-        runIndex++;
-
-        if (runIndex > populationSize - 1)
+        if (this.runIndex > this.populationSize - 1)
         {
-            NextGeneration();
+            this.NextGeneration();
         }
 
-        PreRun();
-
+        this.PreRun();
     }
 
-    //proceed to the next pass
-    //notice that run can be aborted early
-    void NextPass()
+    // proceed to the next pass
+    // notice that run can be aborted early
+    private void NextPass()
     {
+        bool runAborted = this.PostPass();
 
-        bool runAborted = PostPass();
+        this.passIndex++;
 
-        passIndex++;
-
-        if(passIndex > passCount - 1 || runAborted)
+        if (this.passIndex > this.passCount - 1 || runAborted)
         {
-            NextRun();
+            this.NextRun();
         }
 
-        PrePass();
+        this.PrePass();
     }
 
+    // this is needed to calculate fitness of the run
+    private struct Pass
+    {
+        public double Fitness;
+        public double Time;
+        public double NextCheckpoint;
+    }
 }

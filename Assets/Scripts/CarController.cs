@@ -283,7 +283,7 @@ public class CarController : MonoBehaviour
 #pragma warning restore IDE0060 // Remove unused parameter
 #pragma warning restore IDE0051 // Remove unused private members
     {
-        gameController.collisionDetected = true;
+        gameController.CollisionDetected = true;
     }
 
 }

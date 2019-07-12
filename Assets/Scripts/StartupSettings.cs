@@ -337,7 +337,7 @@ public class StartupSettings : MonoBehaviour
 
     void GenerateSettingsUIControls()
     {
-        GenerateSettingsUIControls(GameController.settings, "SimSettings");
+        GenerateSettingsUIControls(GameController.Settings, "SimSettings");
         GenerateSettingsUIControls(CarController.settings, "CarSettings");
     }
 
