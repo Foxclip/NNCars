@@ -447,7 +447,7 @@ public class GameController : MonoBehaviour
     {
         // initializing neural network
         NeuralNetwork network = this.Generation[this.runIndex];
-        this.carController.neuralNetwork = network;
+        this.carController.NeuralNetwork = network;
 
         // list of passes has to be cleared
         this.passes = new List<Pass>();

@@ -7179,6 +7179,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
         type: 3}
+      propertyPath: axleInfos.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
       propertyPath: carSpawnPoint
       value: 
       objectReference: {fileID: 1132167140}
@@ -7252,6 +7257,36 @@ PrefabInstance:
       propertyPath: outputDelay
       value: 0.1
       objectReference: {fileID: 0}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[0].leftWheel
+      value: 
+      objectReference: {fileID: 5134176668691688575}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[0].rightWheel
+      value: 
+      objectReference: {fileID: 5134176668691688574}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[0].steering
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[1].leftWheel
+      value: 
+      objectReference: {fileID: 5134176668691688573}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[1].rightWheel
+      value: 
+      objectReference: {fileID: 5134176668691688572}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[1].motor
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5134176667151529528, guid: ed225f366ade76c4ea538e83073a1d8c,
         type: 3}
       propertyPath: m_AngularDrag
@@ -7314,3 +7349,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ed225f366ade76c4ea538e83073a1d8c, type: 3}
+--- !u!146 &5134176668691688572 stripped
+WheelCollider:
+  m_CorrespondingSourceObject: {fileID: 5134176667485380898, guid: ed225f366ade76c4ea538e83073a1d8c,
+    type: 3}
+  m_PrefabInstance: {fileID: 5134176668691688571}
+  m_PrefabAsset: {fileID: 0}
+--- !u!146 &5134176668691688573 stripped
+WheelCollider:
+  m_CorrespondingSourceObject: {fileID: 5134176668686062030, guid: ed225f366ade76c4ea538e83073a1d8c,
+    type: 3}
+  m_PrefabInstance: {fileID: 5134176668691688571}
+  m_PrefabAsset: {fileID: 0}
+--- !u!146 &5134176668691688574 stripped
+WheelCollider:
+  m_CorrespondingSourceObject: {fileID: 5134176667814991633, guid: ed225f366ade76c4ea538e83073a1d8c,
+    type: 3}
+  m_PrefabInstance: {fileID: 5134176668691688571}
+  m_PrefabAsset: {fileID: 0}
+--- !u!146 &5134176668691688575 stripped
+WheelCollider:
+  m_CorrespondingSourceObject: {fileID: 5134176668819108470, guid: ed225f366ade76c4ea538e83073a1d8c,
+    type: 3}
+  m_PrefabInstance: {fileID: 5134176668691688571}
+  m_PrefabAsset: {fileID: 0}

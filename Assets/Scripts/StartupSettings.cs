@@ -244,7 +244,7 @@ public class StartupSettings : MonoBehaviour
     {
 
         //inputs
-        for(int i = 0; i < CarController.possibleInputs.Count; i++)
+        for(int i = 0; i < CarController.PossibleInputs.Count; i++)
         {
 
             //instantiating toggle prefab
@@ -253,7 +253,7 @@ public class StartupSettings : MonoBehaviour
 
             //related input name will be tied to it
             TextProperty inputName = newToggle.GetComponent<TextProperty>();
-            inputName.text = CarController.possibleInputs[i];
+            inputName.text = CarController.PossibleInputs[i];
 
             //setting position on canvas
             RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
@@ -267,14 +267,14 @@ public class StartupSettings : MonoBehaviour
 
             //label text
             TextMeshProUGUI labelText = newToggle.transform.Find("Label").GetComponent<TextMeshProUGUI>();
-            labelText.text = CarController.possibleInputs[i];
+            labelText.text = CarController.PossibleInputs[i];
 
             inputToggles.Add(toggleComponent);
 
         }
 
         //outputs
-        for (int i = 0; i < CarController.possibleOutputs.Count; i++)
+        for (int i = 0; i < CarController.PossibleOutputs.Count; i++)
         {
 
             //instantiating toggle prefab
@@ -283,7 +283,7 @@ public class StartupSettings : MonoBehaviour
 
             //related output name will be tied to it
             TextProperty outputName = newToggle.GetComponent<TextProperty>();
-            outputName.text = CarController.possibleOutputs[i];
+            outputName.text = CarController.PossibleOutputs[i];
 
             //setting position on canvas
             RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
@@ -297,7 +297,7 @@ public class StartupSettings : MonoBehaviour
 
             //label text
             TextMeshProUGUI labelText = newToggle.transform.Find("Label").GetComponent<TextMeshProUGUI>();
-            labelText.text = CarController.possibleOutputs[i];
+            labelText.text = CarController.PossibleOutputs[i];
 
             outputToggles.Add(toggleComponent);
 
@@ -338,7 +338,7 @@ public class StartupSettings : MonoBehaviour
     void GenerateSettingsUIControls()
     {
         GenerateSettingsUIControls(GameController.Settings, "SimSettings");
-        GenerateSettingsUIControls(CarController.settings, "CarSettings");
+        GenerateSettingsUIControls(CarController.Settings, "CarSettings");
     }
 
     void GenerateSettingsUIControls(List<Setting> settings, string parentName)
