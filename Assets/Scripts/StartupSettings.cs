@@ -7,12 +7,23 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 using System.Linq;
+using System.Xml;
+using System.Xml.Serialization;
+using System.Runtime.Serialization;
 using SFB;
 
+[DataContract(Name = "Setting")]
+[KnownType(typeof(IntSetting))]
+[KnownType(typeof(FloatSetting))]
+[KnownType(typeof(BoolSetting))]
+[KnownType(typeof(ChoiceSetting))]
 public class Setting
 {
 
+    [DataMember]
     public string name;
+
+    public GameObject control;
 
     public Setting(string name)
     {
@@ -21,9 +32,11 @@ public class Setting
 
 }
 
+[DataContract(Name = "IntSetting")]
 public class IntSetting : Setting
 {
 
+    [DataMember]
     public int value;
 
     public IntSetting(string name, int value) : base(name)
@@ -34,9 +47,11 @@ public class IntSetting : Setting
 
 }
 
+[DataContract(Name = "FloatSetting")]
 public class FloatSetting : Setting
 {
 
+    [DataMember]
     public float value;
 
     public FloatSetting(string name, float value) : base(name)
@@ -47,9 +62,11 @@ public class FloatSetting : Setting
 
 }
 
+[DataContract(Name = "BoolSetting")]
 public class BoolSetting : Setting
 {
 
+    [DataMember]
     public bool value;
 
     public BoolSetting(string name, bool value) : base(name)
@@ -60,11 +77,15 @@ public class BoolSetting : Setting
 
 }
 
+[DataContract(Name = "ChoiceSetting")]
 public class ChoiceSetting : Setting
 {
 
-    public List<string> choices;
+    [DataMember]
     public int value;
+
+    public List<string> choices;
+
 
     public ChoiceSetting(string name, List<string> choices, int value) : base(name)
     {
@@ -75,16 +96,41 @@ public class ChoiceSetting : Setting
 
 }
 
-public class ControlWithSetting
+[DataContract(Name = "Config")]
+public class Config
 {
+    const string configPath = "config.xml";
 
-    public GameObject control;
-    public Setting setting;
+    [DataMember]
+    public List<Setting> settings = new List<Setting>();
 
-    public ControlWithSetting(GameObject control, Setting setting)
+    public Config(List<Setting> settings)
     {
-        this.control = control;
-        this.setting = setting;
+        this.settings = settings;
+    }
+
+    public static Config Load()
+    {
+        FileStream fs = new FileStream(configPath, FileMode.Open);
+        XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas();
+        quotas.MaxDepth = 256;
+        XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
+        DataContractSerializer ser = new DataContractSerializer(typeof(Config));
+        Config deserializedConfig = (Config)ser.ReadObject(reader, true);
+        reader.Close();
+        fs.Close();
+        return deserializedConfig;
+    }
+
+    public void Save()
+    {
+        var settings = new XmlWriterSettings();
+        settings.Indent = true;
+        settings.IndentChars = "    ";
+        XmlWriter writer = XmlWriter.Create(configPath, settings);
+        DataContractSerializer ser = new DataContractSerializer(typeof(Config));
+        ser.WriteObject(writer, this);
+        writer.Close();
     }
 
 }
@@ -116,7 +162,7 @@ public class StartupSettings : MonoBehaviour
     private List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
     private List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
 
-    private static List<ControlWithSetting> settingsControls = new List<ControlWithSetting>();
+    private static List<Setting> settingsList = new List<Setting>();
 
     void Start()
     {
@@ -134,6 +180,8 @@ public class StartupSettings : MonoBehaviour
         UpdateRegisteredOutputs();
 
         GenerateSettingsUIControls();
+
+        LoadConfig();
 
     }
 
@@ -267,7 +315,7 @@ public class StartupSettings : MonoBehaviour
 
     private static Setting GetSetting(string name)
     {
-        List<Setting> matchingSettings = (from controlSetting in settingsControls where controlSetting.setting.name == name select controlSetting.setting).ToList();
+        List<Setting> matchingSettings = (from setting in settingsList where setting.name == name select setting).ToList();
         if(matchingSettings.Count == 0)
         {
             throw new KeyNotFoundException(String.Format("Setting {0} not found", name));
@@ -325,7 +373,8 @@ public class StartupSettings : MonoBehaviour
                 dropdown.value = setting.value;
             }
 
-            settingsControls.Add(new ControlWithSetting(newUIControl, settings[i]));
+            settings[i].control = newUIControl;
+            settingsList.Add(settings[i]);
             newUIControl.transform.SetParent(labelTextObject.transform, false);
 
             //related input name will be tied to it
@@ -459,20 +508,67 @@ public class StartupSettings : MonoBehaviour
         trackIndex = index;
     }
 
+    /// <summary>
+    /// Loads config file and sets values of UI controls to values from the file
+    /// </summary>
+    void LoadConfig()
+    {
+        Config config;
+        try
+        {
+            config = Config.Load();
+        }
+        catch(FileNotFoundException)
+        {
+            return;
+        }
+        foreach(Setting settingFromConfig in config.settings)
+        {
+            GameObject control = (from settingFromSettingsList 
+                                  in settingsList
+                                  where settingFromSettingsList.name == settingFromConfig.name
+                                  select settingFromSettingsList.control).First();
+            if(control == null)
+            {
+                continue;
+            }
+            switch (settingFromConfig.GetType().Name)
+            {
+                case nameof(IntSetting):    control.GetComponent<TMP_InputField>().text = ((IntSetting)settingFromConfig).value.ToString();     break;
+                case nameof(FloatSetting):  control.GetComponent<TMP_InputField>().text = ((FloatSetting)settingFromConfig).value.ToString();   break;
+                case nameof(BoolSetting):   control.GetComponent<Toggle>().isOn         = ((BoolSetting)settingFromConfig).value;               break;
+                case nameof(ChoiceSetting): control.GetComponent<TMP_Dropdown>().value  = ((ChoiceSetting)settingFromConfig).value;             break;
+                default: Debug.Log(String.Format("Setting type {0} is unknown", settingFromConfig.GetType().Name)); break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Saves values set by UI controls to config file
+    /// </summary>
+    void SaveConfig()
+    {
+        Config config = new Config(settingsList);
+        config.Save();
+    }
+
     public void StartSimulation()
     {
 
         //GameObjects are going to be destroyed, so data has to be saved
-        foreach(ControlWithSetting controlSetting in settingsControls)
+        foreach(Setting setting in settingsList)
         {
-            switch(controlSetting.setting.GetType().Name)
+            GameObject control = setting.control;
+            switch(setting.GetType().Name)
             {
-                case nameof(IntSetting):    ((IntSetting)controlSetting.setting).value    = Int32.Parse(controlSetting.control.GetComponent<TMP_InputField>().text); break;
-                case nameof(FloatSetting):  ((FloatSetting)controlSetting.setting).value  = float.Parse(controlSetting.control.GetComponent<TMP_InputField>().text); break;
-                case nameof(BoolSetting):   ((BoolSetting)controlSetting.setting).value   = controlSetting.control.GetComponent<Toggle>().isOn;                      break;
-                case nameof(ChoiceSetting): ((ChoiceSetting)controlSetting.setting).value = controlSetting.control.GetComponent<TMP_Dropdown>().value;               break;
+                case nameof(IntSetting):    ((IntSetting)setting).value    = Int32.Parse(control.GetComponent<TMP_InputField>().text); break;
+                case nameof(FloatSetting):  ((FloatSetting)setting).value  = float.Parse(control.GetComponent<TMP_InputField>().text); break;
+                case nameof(BoolSetting):   ((BoolSetting)setting).value   = control.GetComponent<Toggle>().isOn;                      break;
+                case nameof(ChoiceSetting): ((ChoiceSetting)setting).value = control.GetComponent<TMP_Dropdown>().value;               break;
             }
         }
+
+        SaveConfig();
 
         SceneManager.LoadScene("MainScene");
 
