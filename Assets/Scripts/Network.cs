@@ -16,6 +16,7 @@ public enum NeuronType
     HiddenNeuron
 }
 
+[Serializable]
 public class NeuralNetworkException : Exception
 {
     public NeuralNetworkException() { }
@@ -766,9 +767,11 @@ public class NeuralNetwork
     /// </summary>
     public void Serialize(String fileName)
     {
-        var settings = new XmlWriterSettings();
-        settings.Indent = true;
-        settings.IndentChars = "    ";
+        XmlWriterSettings settings = new XmlWriterSettings
+        {
+            Indent = true,
+            IndentChars = "    "
+        };
         XmlWriter writer = XmlWriter.Create(fileName, settings);
         DataContractSerializer ser = new DataContractSerializer(typeof(NeuralNetwork));
         ser.WriteObject(writer, this);
@@ -782,14 +785,18 @@ public class NeuralNetwork
     public static NeuralNetwork Deserialize(String fileName)
     {
 
-        FileStream fs = new FileStream(fileName, FileMode.Open);
-        XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas();
-        quotas.MaxDepth = 256;
-        XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
-        DataContractSerializer ser = new DataContractSerializer(typeof(NeuralNetwork));
-        NeuralNetwork deserializedNetwork = (NeuralNetwork)ser.ReadObject(reader, true);
-        reader.Close();
-        fs.Close();
+        NeuralNetwork deserializedNetwork;
+        using (FileStream fs = new FileStream(fileName, FileMode.Open))
+        {
+            XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas
+            {
+                MaxDepth = 256
+            };
+            XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
+            DataContractSerializer ser = new DataContractSerializer(typeof(NeuralNetwork));
+            deserializedNetwork = (NeuralNetwork)ser.ReadObject(reader, true);
+            reader.Close();
+        }
 
         //deserializer doesn't use usual means of creating object, so this has to be done
         deserializedNetwork.SortNeurons();
@@ -841,12 +848,13 @@ public class NeuralNetwork
     {
 
         StreamReader reader = new StreamReader(filename);
-        NeuralNetwork loadedNetwork = new NeuralNetwork();
-
-        //loading network properties
-        loadedNetwork.id = Int32.Parse(reader.ReadLine().Split(' ')[1]);
-        loadedNetwork.fitness = Double.Parse(reader.ReadLine().Split(' ')[1]);
-        loadedNetwork.breakthroughCount = Int32.Parse(reader.ReadLine().Split(' ')[1]);
+        NeuralNetwork loadedNetwork = new NeuralNetwork
+        {
+            //loading network properties
+            id = Int32.Parse(reader.ReadLine().Split(' ')[1]),
+            fitness = Double.Parse(reader.ReadLine().Split(' ')[1]),
+            breakthroughCount = Int32.Parse(reader.ReadLine().Split(' ')[1])
+        };
 
         //these properties will be skipped on the second pass, so we need to know amount of them
         const int networkParameterCount = 3;
@@ -947,7 +955,7 @@ public class Utils
 {
 
     //random number generator is initialized on the start of the program
-    private static Random random = new Random();
+    private static readonly Random random = new Random();
 
     /// <summary>
     /// Returns random double.
@@ -1036,9 +1044,9 @@ public class Utils
             }
 
             // Don't serialize a null object, simply return the default for that object
-            if (Object.ReferenceEquals(source, null))
+            if (source == null)
             {
-                return default(T);
+                return default;
             }
 
             IFormatter formatter = new BinaryFormatter();
@@ -1059,7 +1067,7 @@ public class Utils
 /// </summary>
 class Program
 {
-    static void Main(string[] args)
+    static void Main()
     {
 
         List<string> inputList = new List<string> { "input1", "input2" };

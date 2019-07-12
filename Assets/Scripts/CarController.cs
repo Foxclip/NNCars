@@ -126,14 +126,14 @@ public class CarController : MonoBehaviour
                 continue;
             }
 
-            RaycastHit hit;
-            if(Physics.Raycast(rayOrigin.position, rayOrigin.forward, out hit))
+            if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit))
             {
                 NNInputs.Add(rayOriginName, hit.distance);
                 Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
-            } else
+            }
+            else
             {
-                NNInputs.Add(rayOriginName, - 1.0);
+                NNInputs.Add(rayOriginName, -1.0);
             }
         }
 
@@ -148,8 +148,7 @@ public class CarController : MonoBehaviour
         {
             double frontWheelSlip = 0.0;
             AxleInfo frontAxle = axleInfos[0];
-            WheelHit frontWheelHit;
-            frontAxle.leftWheel.GetGroundHit(out frontWheelHit);
+            frontAxle.leftWheel.GetGroundHit(out WheelHit frontWheelHit);
             frontWheelSlip += frontWheelHit.sidewaysSlip;
             frontAxle.rightWheel.GetGroundHit(out frontWheelHit);
             frontWheelSlip += frontWheelHit.sidewaysSlip;
@@ -161,8 +160,7 @@ public class CarController : MonoBehaviour
         {
             double rearWheelsSlip = 0.0;
             AxleInfo rearAxle = axleInfos[1];
-            WheelHit rearWheelHit;
-            rearAxle.leftWheel.GetGroundHit(out rearWheelHit);
+            rearAxle.leftWheel.GetGroundHit(out WheelHit rearWheelHit);
             rearWheelsSlip += rearWheelHit.sidewaysSlip;
             rearAxle.rightWheel.GetGroundHit(out rearWheelHit);
             rearWheelsSlip += rearWheelHit.sidewaysSlip;
@@ -270,19 +268,20 @@ public class CarController : MonoBehaviour
         {
             return;
         }
-
         Transform visualWheel = collider.transform.GetChild(0);
-
-        Vector3 position;
-        Quaternion rotation;
-        collider.GetWorldPose(out position, out rotation);
-
+        collider.GetWorldPose(out Vector3 position, out Quaternion rotation);
         visualWheel.transform.position = position;
         visualWheel.transform.rotation = rotation * Quaternion.Euler(0.0f, 0.0f, 90.0f);
     }
 
+
+
     //detects if car collided with a wall
+#pragma warning disable IDE0051 // Remove unused private members
+#pragma warning disable IDE0060 // Remove unused parameter
     void OnCollisionEnter(Collision collision)
+#pragma warning restore IDE0060 // Remove unused parameter
+#pragma warning restore IDE0051 // Remove unused private members
     {
         gameController.collisionDetected = true;
     }

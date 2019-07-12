@@ -82,30 +82,32 @@ public class GameController : MonoBehaviour
         public double nextCheckpoint;
     };
 
-    private CarController carController;                            //CarController script
-    private Transform track;                                        //transform of the track
-    private Transform carSpawnPoint;                                //where car will be placed before strting a pass
-    private List<Transform> checkpoints = new List<Transform>();    //list of all checkpoints in the track
-    private NeuralNetwork bestNetwork;                              //best result of the simulation
-    private double bestFitnessInThisPass = 0.0;                     //best fitness achieved in this pass, pass is ended if it does not imporve for some amount of time
-    private List<Pass> passes;                                      //list of passes in the run, used to calculate fitness of the run
-    private double fitnessDeathTimer = 0.0;                         //how much time passed since last improvement of bestFitnessInThisPass
-    private double speedDeathTimer = 0.0;                           //how much time passed since speed was not too low
-    private int generationIndex = 0;                                //index of current generation
-    private int runIndex = 0;                                       //index of current run
-    private int passIndex = 0;                                      //index of current pass
-    private double bestRunFitness = 0.0;                            //best fitness achieved in this simulation
-    private int breakthroughGen = 0;                                //index of generation where best fitness was achieved
-    private int breakthroughRun = 0;                                //index of run where best fitness was achieved
-    private double timer = 0.0;                                     //time since start of the pass
-    private double distance = 0.0;                                  //how much distance car has covered in this pass
-    private double acceptedMinTime = -1.0;                          //how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
-    private Vector3 previousPosition;                               //position of the car in previous frame
-    private int breakthroughCount = 0;                              //how much fitness improvements happened with this neural network
+    private CarController carController;                                    //CarController script
+    private Transform track;                                                //transform of the track
+    private Transform carSpawnPoint;                                        //where car will be placed before strting a pass
+    private readonly List<Transform> checkpoints = new List<Transform>();   //list of all checkpoints in the track
+    private NeuralNetwork bestNetwork;                                      //best result of the simulation
+    private double bestFitnessInThisPass = 0.0;                             //best fitness achieved in this pass, pass is ended if it does not imporve for some amount of time
+    private List<Pass> passes;                                              //list of passes in the run, used to calculate fitness of the run
+    private double fitnessDeathTimer = 0.0;                                 //how much time passed since last improvement of bestFitnessInThisPass
+    private double speedDeathTimer = 0.0;                                   //how much time passed since speed was not too low
+    private int generationIndex = 0;                                        //index of current generation
+    private int runIndex = 0;                                               //index of current run
+    private int passIndex = 0;                                              //index of current pass
+    private double bestRunFitness = 0.0;                                    //best fitness achieved in this simulation
+    private int breakthroughGen = 0;                                        //index of generation where best fitness was achieved
+    private int breakthroughRun = 0;                                        //index of run where best fitness was achieved
+    private double timer = 0.0;                                             //time since start of the pass
+    private double distance = 0.0;                                          //how much distance car has covered in this pass
+    private double acceptedMinTime = -1.0;                                  //how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
+    private Vector3 previousPosition;                                       //position of the car in previous frame
+    private int breakthroughCount = 0;                                      //how much fitness improvements happened with this neural network
 
-    private bool fastForward = false;                               //whether fast forward function is activated
+    private bool fastForward = false;                                       //whether fast forward function is activated
 
+#pragma warning disable IDE0051 // Remove unused private members
     void Start()
+#pragma warning restore IDE0051 // Remove unused private members
     {
 
         //loading settings
@@ -170,7 +172,9 @@ public class GameController : MonoBehaviour
 
     }
 
+#pragma warning disable IDE0051 // Remove unused private members
     void Update()
+#pragma warning restore IDE0051 // Remove unused private members
     {
         if (Input.GetKeyDown("space"))
         {
@@ -186,7 +190,9 @@ public class GameController : MonoBehaviour
         }
     }
 
+#pragma warning disable IDE0051 // Remove unused private members
     void FixedUpdate()
+#pragma warning restore IDE0051 // Remove unused private members
     {
 
         distance += Vector3.Distance(carObject.transform.position, previousPosition);
@@ -446,8 +452,8 @@ public class GameController : MonoBehaviour
         //speed and time bonuses
         //if the car completes the track, it gets time bonus
         //otherwise, it gets speed bonus
-        double speedBonus = 0.0;
-        double timeBonus = 0.0;
+        double speedBonus;
+        double timeBonus;
         if (nextCheckpoint < checkpoints.Count)
         {
             double averageSpeed = distance / timer;
@@ -464,10 +470,12 @@ public class GameController : MonoBehaviour
         passFitness += timeBonus;
 
         //adding this pass to the list
-        Pass pass = new Pass();
-        pass.fitness = passFitness;
-        pass.time = timer;
-        pass.nextCheckpoint = nextCheckpoint;
+        Pass pass = new Pass
+        {
+            fitness = passFitness,
+            time = timer,
+            nextCheckpoint = nextCheckpoint
+        };
         passes.Add(pass);
 
         //distance bonus (not added to passFitness, used only for debug)

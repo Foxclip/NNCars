@@ -103,6 +103,10 @@ public class Config
 
     [DataMember]
     public List<Setting> settings = new List<Setting>();
+    [DataMember]
+    public List<string> enabledInputList = new List<string>();
+    [DataMember]
+    public List<string> enabledOutputList = new List<string>();
 
     public Config(List<Setting> settings)
     {
@@ -111,22 +115,28 @@ public class Config
 
     public static Config Load()
     {
-        FileStream fs = new FileStream(configPath, FileMode.Open);
-        XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas();
-        quotas.MaxDepth = 256;
-        XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
-        DataContractSerializer ser = new DataContractSerializer(typeof(Config));
-        Config deserializedConfig = (Config)ser.ReadObject(reader, true);
-        reader.Close();
-        fs.Close();
+        Config deserializedConfig;
+        using (FileStream fs = new FileStream(configPath, FileMode.Open))
+        {
+            XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas
+            {
+                MaxDepth = 256
+            };
+            XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
+            DataContractSerializer ser = new DataContractSerializer(typeof(Config));
+            deserializedConfig = (Config)ser.ReadObject(reader, true);
+            reader.Close();
+        }
         return deserializedConfig;
     }
 
     public void Save()
     {
-        var settings = new XmlWriterSettings();
-        settings.Indent = true;
-        settings.IndentChars = "    ";
+        var settings = new XmlWriterSettings
+        {
+            Indent = true,
+            IndentChars = "    "
+        };
         XmlWriter writer = XmlWriter.Create(configPath, settings);
         DataContractSerializer ser = new DataContractSerializer(typeof(Config));
         ser.WriteObject(writer, this);
@@ -159,12 +169,14 @@ public class StartupSettings : MonoBehaviour
 
     private string networkFile = "";                                    //current network filename
 
-    private List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
-    private List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
+    private readonly List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
+    private readonly List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
 
-    private static List<Setting> settingsList = new List<Setting>();
+    private static readonly List<Setting> settingsList = new List<Setting>();
 
+#pragma warning disable IDE0051 // Remove unused private members
     void Start()
+#pragma warning restore IDE0051 // Remove unused private members
     {
 
         //things will break if floating point separator is not "."
@@ -325,11 +337,11 @@ public class StartupSettings : MonoBehaviour
 
     void GenerateSettingsUIControls()
     {
-        _GenerateSettingsUIControls(GameController.settings, "SimSettings");
-        _GenerateSettingsUIControls(CarController.settings, "CarSettings");
+        GenerateSettingsUIControls(GameController.settings, "SimSettings");
+        GenerateSettingsUIControls(CarController.settings, "CarSettings");
     }
 
-    void _GenerateSettingsUIControls(List<Setting> settings, string parentName)
+    void GenerateSettingsUIControls(List<Setting> settings, string parentName)
     {
 
         for (int i = 0; i < settings.Count; i++)
