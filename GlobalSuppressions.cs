@@ -12,3 +12,7 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Code Quality", "IDE0051:Remove unused private members", Justification = "<Called by Unity>", Scope = "member", Target = "~M:CarController.FixedUpdate")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Code Quality", "IDE0051:Remove unused private members", Justification = "<Called by Unity>", Scope = "member", Target = "~M:CarController.OnCollisionEnter(UnityEngine.Collision)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "<Called by Unity>", Scope = "member", Target = "~M:CarController.OnCollisionEnter(UnityEngine.Collision)")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Code Quality", "IDE0051:Remove unused private members", Justification = "<Pending>", Scope = "member", Target = "~M:GameController.Start")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Code Quality", "IDE0051:Remove unused private members", Justification = "<Pending>", Scope = "member", Target = "~M:GameController.Update")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Code Quality", "IDE0051:Remove unused private members", Justification = "<Pending>", Scope = "member", Target = "~M:GameController.FixedUpdate")]
+

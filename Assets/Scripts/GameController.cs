@@ -135,9 +135,7 @@ public class GameController : MonoBehaviour
     /// </summary>
     public double PassFitness { get; set; }
 
-#pragma warning disable IDE0051 // Remove unused private members
     private void Start()
-#pragma warning restore IDE0051 // Remove unused private members
     {
         // loading settings
         this.layerCount = StartupSettings.GetIntSetting("layerCount");
@@ -200,9 +198,7 @@ public class GameController : MonoBehaviour
         this.PrePass();
     }
 
-#pragma warning disable IDE0051 // Remove unused private members
     private void Update()
-#pragma warning restore IDE0051 // Remove unused private members
     {
         if (Input.GetKeyDown("space"))
         {
@@ -219,9 +215,7 @@ public class GameController : MonoBehaviour
         }
     }
 
-#pragma warning disable IDE0051 // Remove unused private members
     private void FixedUpdate()
-#pragma warning restore IDE0051 // Remove unused private members
     {
         this.distance += Vector3.Distance(this.carObject.transform.position, this.previousPosition);
         this.previousPosition = this.carObject.transform.position;
