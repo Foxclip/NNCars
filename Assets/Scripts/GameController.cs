@@ -91,24 +91,24 @@ public class GameController : MonoBehaviour
     /// <summary>
     /// List of settings available to be set from StartupSettings screen.
     /// </summary>
-    public static List<Setting> Settings { get; set; } = new List<Setting>()
+    public static List<StartupSettings.Setting> Settings { get; set; } = new List<StartupSettings.Setting>()
     {
-        new IntSetting("layerCount", 1),
-        new IntSetting("neuronsInLayer", 2),
-        new IntSetting("populationSize", 10),
-        new IntSetting("passCount", 5),
-        new FloatSetting("mutationPower", 3.0f),
-        new FloatSetting("maxMutation", 1.0f),
-        new FloatSetting("speedupTimeScale", 100.0f),
-        new FloatSetting("checkpointReachDistance", 5.0f),
-        new FloatSetting("randomAngleMin", -22.0f),
-        new FloatSetting("randomAngleMax", 22.0f),
-        new ChoiceSetting("runAcceptMode", new List<string> { "All", "Median" }, 0),
-        new FloatSetting("terminationDelay", 1.0f),
-        new FloatSetting("terminationSpeed", 0.5f),
-        new FloatSetting("checkpointBonusWeight", 100.0f),
-        new FloatSetting("distanceBonusWeight", 10.0f),
-        new FloatSetting("speedBonusWeight", 1.0f),
+        new StartupSettings.IntSetting("layerCount", 1),
+        new StartupSettings.IntSetting("neuronsInLayer", 2),
+        new StartupSettings.IntSetting("populationSize", 10),
+        new StartupSettings.IntSetting("passCount", 5),
+        new StartupSettings.FloatSetting("mutationPower", 3.0f),
+        new StartupSettings.FloatSetting("maxMutation", 1.0f),
+        new StartupSettings.FloatSetting("speedupTimeScale", 100.0f),
+        new StartupSettings.FloatSetting("checkpointReachDistance", 5.0f),
+        new StartupSettings.FloatSetting("randomAngleMin", -22.0f),
+        new StartupSettings.FloatSetting("randomAngleMax", 22.0f),
+        new StartupSettings.ChoiceSetting("runAcceptMode", new List<string> { "All", "Median" }, 0),
+        new StartupSettings.FloatSetting("terminationDelay", 1.0f),
+        new StartupSettings.FloatSetting("terminationSpeed", 0.5f),
+        new StartupSettings.FloatSetting("checkpointBonusWeight", 100.0f),
+        new StartupSettings.FloatSetting("distanceBonusWeight", 10.0f),
+        new StartupSettings.FloatSetting("speedBonusWeight", 1.0f),
     };
 
     /// <summary>
@@ -160,7 +160,7 @@ public class GameController : MonoBehaviour
         {
             t.gameObject.SetActive(false);
         }
-        this.track = tracksParent.GetChild(StartupSettings.trackIndex);
+        this.track = tracksParent.GetChild(StartupSettings.TrackIndex);
         this.track.gameObject.SetActive(true);
 
         // loading spawn point
@@ -174,18 +174,18 @@ public class GameController : MonoBehaviour
         }
 
         // loading neural network or creating new one
-        if (StartupSettings.neuralNetwork != null)
+        if (StartupSettings.SelectedNeuralNetwork != null)
         {
-            this.bestNetwork = StartupSettings.neuralNetwork;
+            this.bestNetwork = StartupSettings.SelectedNeuralNetwork;
             this.breakthroughCount = this.bestNetwork.BreakthroughCount;
-            if (!StartupSettings.resetFitness)
+            if (!StartupSettings.ResetFitness)
             {
                 this.bestRunFitness = this.bestNetwork.Fitness;
             }
         }
         else
         {
-            this.bestNetwork = new NeuralNetwork(StartupSettings.registeredInputs, StartupSettings.registeredOutputs, this.layerCount, this.neuronsInLayer);
+            this.bestNetwork = new NeuralNetwork(StartupSettings.RegisteredInputs, StartupSettings.RegisteredOutputs, this.layerCount, this.neuronsInLayer);
         }
 
         // preparing simulation
@@ -346,7 +346,7 @@ public class GameController : MonoBehaviour
             string genRunString = "g" + this.generationIndex + "r" + this.runIndex;
             string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".txt";
             Directory.CreateDirectory(this.networksFolderPath);
-            this.Generation[this.runIndex].SaveToFile(StartupSettings.networksFolderPath + "/" + filePath);
+            this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath);
         }
 
         // updating best time

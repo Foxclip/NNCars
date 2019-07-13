@@ -1,589 +1,730 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System;
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
-using TMPro;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Serialization;
-using System.Runtime.Serialization;
 using SFB;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
-[DataContract(Name = "Setting")]
-[KnownType(typeof(IntSetting))]
-[KnownType(typeof(FloatSetting))]
-[KnownType(typeof(BoolSetting))]
-[KnownType(typeof(ChoiceSetting))]
-public class Setting
-{
-
-    [DataMember]
-    public string name;
-
-    public GameObject control;
-
-    public Setting(string name)
-    {
-        this.name = name;
-    }
-
-}
-
-[DataContract(Name = "IntSetting")]
-public class IntSetting : Setting
-{
-
-    [DataMember]
-    public int value;
-
-    public IntSetting(string name, int value) : base(name)
-    {
-        this.name = name;
-        this.value = value;
-    }
-
-}
-
-[DataContract(Name = "FloatSetting")]
-public class FloatSetting : Setting
-{
-
-    [DataMember]
-    public float value;
-
-    public FloatSetting(string name, float value) : base(name)
-    {
-        this.name = name;
-        this.value = value;
-    }
-
-}
-
-[DataContract(Name = "BoolSetting")]
-public class BoolSetting : Setting
-{
-
-    [DataMember]
-    public bool value;
-
-    public BoolSetting(string name, bool value) : base(name)
-    {
-        this.name = name;
-        this.value = value;
-    }
-
-}
-
-[DataContract(Name = "ChoiceSetting")]
-public class ChoiceSetting : Setting
-{
-
-    [DataMember]
-    public int value;
-
-    public List<string> choices;
-
-
-    public ChoiceSetting(string name, List<string> choices, int value) : base(name)
-    {
-        this.name = name;
-        this.choices = choices;
-        this.value = value;
-    }
-
-}
-
-[DataContract(Name = "Config")]
-public class Config
-{
-    const string configPath = "config.xml";
-
-    [DataMember]
-    public List<Setting> settings = new List<Setting>();
-    [DataMember]
-    public List<string> enabledInputList = new List<string>();
-    [DataMember]
-    public List<string> enabledOutputList = new List<string>();
-
-    public Config(List<Setting> settings)
-    {
-        this.settings = settings;
-    }
-
-    public static Config Load()
-    {
-        Config deserializedConfig;
-        using (FileStream fs = new FileStream(configPath, FileMode.Open))
-        {
-            XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas
-            {
-                MaxDepth = 256
-            };
-            XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
-            DataContractSerializer ser = new DataContractSerializer(typeof(Config));
-            deserializedConfig = (Config)ser.ReadObject(reader, true);
-            reader.Close();
-        }
-        return deserializedConfig;
-    }
-
-    public void Save()
-    {
-        var settings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "    "
-        };
-        XmlWriter writer = XmlWriter.Create(configPath, settings);
-        DataContractSerializer ser = new DataContractSerializer(typeof(Config));
-        ser.WriteObject(writer, this);
-        writer.Close();
-    }
-
-}
-
+/// <summary>
+/// Allows to configure simulation settings.
+/// </summary>
 public class StartupSettings : MonoBehaviour
 {
+    private static readonly List<Setting> SettingsList = new List<Setting>();
+    private readonly List<Toggle> inputToggles = new List<Toggle>();  // toggles for choosing available inputs
+    private readonly List<Toggle> outputToggles = new List<Toggle>(); // toggles for choosing available outputs
 
-    //prefabs for UI controls
-    public GameObject togglePrefab;
-    public GameObject settingsTogglePrefab;
-    public GameObject intFieldPrefab;
-    public GameObject floatFieldPrefab;
-    public GameObject dropdownPrefab;
-    public GameObject textPrefab;
+    // prefabs for UI controls
+#pragma warning disable IDE0044 // Add readonly modifier
+    [SerializeField]
+    private GameObject togglePrefab;
+    [SerializeField]
+    private GameObject settingsTogglePrefab;
+    [SerializeField]
+    private GameObject intFieldPrefab;
+    [SerializeField]
+    private GameObject floatFieldPrefab;
+    [SerializeField]
+    private GameObject dropdownPrefab;
+    [SerializeField]
+    private GameObject textPrefab;
+    [SerializeField]
+    private TextMeshProUGUI openFileText;         // text containing filename of neural network
+    [SerializeField]
+    private TextMeshProUGUI inputOutputCountText; // text informing about changes that will be made in the loaded neural network
+#pragma warning restore IDE0044 // Add readonly modifier
 
-    public static string networksFolderPath = "./Networks";             //path to folder neural networks will be saved to
-    public TextMeshProUGUI openFileText;                                //text containing filename of neural network
-    public TextMeshProUGUI inputOutputCountText;                        //text informing about changes that will be made in the loaded neural network
+    private string networkFile = string.Empty; // current network filename
 
-    public static NeuralNetwork neuralNetwork = null;                   //neural network loaded from file
-    public static int trackIndex = 0;
-    public static bool resetFitness = false;                            //whether fitness of loaded neural network will be reset
+    /// <summary>
+    /// Path to folder neural networks will be saved to.
+    /// </summary>
+    public static string NetworksFolderPath { get; set; } = "./Networks";
 
-    public static List<string> registeredInputs = new List<string>();   //list of inputs in the simulation
-    public static List<string> registeredOutputs = new List<string>();  //list of outputs in the simulation
+    /// <summary>
+    /// Neural network loaded from file.
+    /// </summary>
+    public static NeuralNetwork SelectedNeuralNetwork { get; set; } = null;
 
-    private string networkFile = "";                                    //current network filename
+    /// <summary>
+    /// Index of selected track.
+    /// </summary>
+    public static int TrackIndex { get; set; } = 0;
 
-    private readonly List<Toggle> inputToggles = new List<Toggle>();             //toggles for choosing available inputs
-    private readonly List<Toggle> outputToggles = new List<Toggle>();            //toggles for choosing available outputs
+    /// <summary>
+    /// Whether fitness of loaded neural network will be reset.
+    /// </summary>
+    public static bool ResetFitness { get; set; } = false;
 
-    private static readonly List<Setting> settingsList = new List<Setting>();
+    /// <summary>
+    /// List of inputs in the simulation.
+    /// </summary>
+    public static List<string> RegisteredInputs { get; set; } = new List<string>();
 
-#pragma warning disable IDE0051 // Remove unused private members
-    void Start()
-#pragma warning restore IDE0051 // Remove unused private members
+    /// <summary>
+    /// List of outputs in the simulation.
+    /// </summary>
+    public static List<string> RegisteredOutputs { get; set; } = new List<string>();
+
+    /// <summary>
+    /// Retuns value of IntSetting with specified name.
+    /// </summary>
+    /// <param name="name">Name of the setting.</param>
+    /// <returns>Value of the setting.</returns>
+    public static int GetIntSetting(string name)
     {
+        return ((IntSetting)GetSetting(name)).Value;
+    }
 
-        //things will break if floating point separator is not "."
+    /// <summary>
+    /// Retuns value of FloatSetting with specified name.
+    /// </summary>
+    /// <param name="name">Name of the setting.</param>
+    /// <returns>Value of the setting.</returns>
+    public static float GetFloatSetting(string name)
+    {
+        return ((FloatSetting)GetSetting(name)).Value;
+    }
+
+    /// <summary>
+    /// Retuns value of BoolSetting with specified name.
+    /// </summary>
+    /// <param name="name">Name of the setting.</param>
+    /// <returns>Value of the setting.</returns>
+    public static bool GetBoolSetting(string name)
+    {
+        return ((BoolSetting)GetSetting(name)).Value;
+    }
+
+    /// <summary>
+    /// Retuns value of ChoiceSetting with specified name.
+    /// </summary>
+    /// <param name="name">Name of the setting.</param>
+    /// <returns>Value of the setting.</returns>
+    public static int GetChoiceSetting(string name)
+    {
+        return ((ChoiceSetting)GetSetting(name)).Value;
+    }
+
+    /// <summary>
+    /// Select Network button event.
+    /// </summary>
+    public void SelectNetworkFile()
+    {
+        // if there is no "Networks" folder, create it
+        Directory.CreateDirectory(NetworksFolderPath);
+
+        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", NetworksFolderPath, "txt", false);
+
+        if (fileList.Length > 0)
+        {
+            // getting filename
+            this.networkFile = fileList[0];
+            this.openFileText.text = Path.GetFileName(this.networkFile);
+
+            this.LoadNetwork(this.networkFile);
+        }
+    }
+
+    /// <summary>
+    /// Clear Network button event.
+    /// </summary>
+    public void ClearNetworkFile()
+    {
+        SelectedNeuralNetwork = null;
+        this.openFileText.text = "<none>";
+        this.inputOutputCountText.text = string.Empty;
+    }
+
+    /// <summary>
+    /// Reset Fitness toggle event.
+    /// </summary>
+    /// <param name="value">Value of the toggle.</param>
+    public void ResetFitnessToggle(bool value)
+    {
+        ResetFitness = value;
+    }
+
+    /// <summary>
+    /// Select Track dropdown event.
+    /// </summary>
+    /// <param name="index">Value of the dropdown.</param>
+    public void SelectTrackDropdown(int index)
+    {
+        TrackIndex = index;
+    }
+
+    /// <summary>
+    /// Start button event.
+    /// </summary>
+    public void StartSimulation()
+    {
+        // GameObjects are going to be destroyed, so data has to be saved
+        foreach (Setting setting in SettingsList)
+        {
+            GameObject control = setting.Control;
+            switch (setting.GetType().Name)
+            {
+                case nameof(IntSetting): ((IntSetting)setting).Value = int.Parse(control.GetComponent<TMP_InputField>().text); break;
+                case nameof(FloatSetting): ((FloatSetting)setting).Value = float.Parse(control.GetComponent<TMP_InputField>().text); break;
+                case nameof(BoolSetting): ((BoolSetting)setting).Value = control.GetComponent<Toggle>().isOn; break;
+                case nameof(ChoiceSetting): ((ChoiceSetting)setting).Value = control.GetComponent<TMP_Dropdown>().value; break;
+            }
+        }
+
+        this.SaveConfig();
+
+        SceneManager.LoadScene("MainScene");
+    }
+
+    private static Setting GetSetting(string name)
+    {
+        List<Setting> matchingSettings = (from setting in SettingsList where setting.Name == name select setting).ToList();
+        if (matchingSettings.Count == 0)
+        {
+            throw new KeyNotFoundException(string.Format("Setting {0} not found", name));
+        }
+        return matchingSettings[0];
+    }
+
+    private void Start()
+    {
+        // things will break if floating point separator is not "."
         System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)System.Threading.Thread.CurrentThread.CurrentCulture.Clone();
         customCulture.NumberFormat.NumberDecimalSeparator = ".";
         System.Threading.Thread.CurrentThread.CurrentCulture = customCulture;
 
-        //there is placeholder text in Editor, but it should be hidden at the start
-        inputOutputCountText.text = "";
+        // there is placeholder text in Editor, but it should be hidden at the start
+        this.inputOutputCountText.text = string.Empty;
 
-        GenerateInputOutputToggles();
-        UpdateRegisteredInputs();
-        UpdateRegisteredOutputs();
+        this.GenerateInputOutputToggles();
+        this.UpdateRegisteredInputs();
+        this.UpdateRegisteredOutputs();
 
-        GenerateSettingsUIControls();
+        this.GenerateSettingsUIControls();
 
-        LoadConfig();
-
+        this.LoadConfig();
     }
 
-    void UpdateRegisteredInputs()
+    private void UpdateRegisteredInputs()
     {
-        registeredInputs.Clear();
-        foreach(Toggle toggle in inputToggles)
+        RegisteredInputs.Clear();
+        foreach (Toggle toggle in this.inputToggles)
         {
             string inputName = toggle.GetComponent<TextProperty>().text;
             if (toggle.isOn)
             {
-                registeredInputs.Add(inputName);
+                RegisteredInputs.Add(inputName);
             }
         }
     }
 
-    void UpdateRegisteredOutputs()
+    private void UpdateRegisteredOutputs()
     {
-        registeredOutputs.Clear();
-        foreach (Toggle toggle in outputToggles)
+        RegisteredOutputs.Clear();
+        foreach (Toggle toggle in this.outputToggles)
         {
             string outputName = toggle.GetComponent<TextProperty>().text;
             if (toggle.isOn)
             {
-                registeredOutputs.Add(outputName);
+                RegisteredOutputs.Add(outputName);
             }
         }
     }
 
-    void InputToggleValueChanged(Toggle toggle, bool value, string inputName)
+    private void InputToggleValueChanged(Toggle toggle, bool value, string inputName)
     {
         Debug.Log("CHANGED " + toggle.GetInstanceID() + " " + inputName + " " + value);
-        UpdateRegisteredInputs();
-        LoadNetwork(networkFile);
+        this.UpdateRegisteredInputs();
+        this.LoadNetwork(this.networkFile);
     }
 
-    void OutputToggleValueChanged(Toggle toggle, bool value, string outputName)
+    private void OutputToggleValueChanged(Toggle toggle, bool value, string outputName)
     {
         Debug.Log("CHANGED " + toggle.GetInstanceID() + " " + outputName + " " + value);
-        UpdateRegisteredOutputs();
-        LoadNetwork(networkFile);
+        this.UpdateRegisteredOutputs();
+        this.LoadNetwork(this.networkFile);
     }
 
     /// <summary>
     /// Generates UI toggles for choosing inputs and outputs available in the simulation.
     /// </summary>
-    void GenerateInputOutputToggles()
+    private void GenerateInputOutputToggles()
     {
-
-        //inputs
-        for(int i = 0; i < CarController.PossibleInputs.Count; i++)
+        // inputs
+        for (int i = 0; i < CarController.PossibleInputs.Count; i++)
         {
+            // instantiating toggle prefab
+            GameObject newToggle = Instantiate(this.togglePrefab);
+            newToggle.transform.SetParent(this.transform.Find("Select Inputs"));
 
-            //instantiating toggle prefab
-            GameObject newToggle = Instantiate(togglePrefab);
-            newToggle.transform.SetParent(transform.Find("Select Inputs"));
-
-            //related input name will be tied to it
+            // related input name will be tied to it
             TextProperty inputName = newToggle.GetComponent<TextProperty>();
             inputName.text = CarController.PossibleInputs[i];
 
-            //setting position on canvas
+            // setting position on canvas
             RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
-            rectTransformComponent.anchoredPosition = new Vector2(0.0f, i * -rectTransformComponent.sizeDelta.y - 20f);
+            rectTransformComponent.anchoredPosition = new Vector2(0.0f, (i * -rectTransformComponent.sizeDelta.y) - 20f);
 
-            //event listener
+            // event listener
             Toggle toggleComponent = newToggle.GetComponent<Toggle>();
-            toggleComponent.onValueChanged.AddListener(delegate {
-                InputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
+            toggleComponent.onValueChanged.AddListener(arg0 =>
+            {
+                this.InputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
             });
 
-            //label text
+            // label text
             TextMeshProUGUI labelText = newToggle.transform.Find("Label").GetComponent<TextMeshProUGUI>();
             labelText.text = CarController.PossibleInputs[i];
 
-            inputToggles.Add(toggleComponent);
-
+            this.inputToggles.Add(toggleComponent);
         }
 
-        //outputs
+        // outputs
         for (int i = 0; i < CarController.PossibleOutputs.Count; i++)
         {
+            // instantiating toggle prefab
+            GameObject newToggle = Instantiate(this.togglePrefab);
+            newToggle.transform.SetParent(this.transform.Find("Select Outputs"));
 
-            //instantiating toggle prefab
-            GameObject newToggle = Instantiate(togglePrefab);
-            newToggle.transform.SetParent(transform.Find("Select Outputs"));
-
-            //related output name will be tied to it
+            // related output name will be tied to it
             TextProperty outputName = newToggle.GetComponent<TextProperty>();
             outputName.text = CarController.PossibleOutputs[i];
 
-            //setting position on canvas
+            // setting position on canvas
             RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
-            rectTransformComponent.anchoredPosition = new Vector2(0.0f, i * -rectTransformComponent.sizeDelta.y - 20f);
+            rectTransformComponent.anchoredPosition = new Vector2(0.0f, (i * -rectTransformComponent.sizeDelta.y) - 20f);
 
-            //event listener
+            // event listener
             Toggle toggleComponent = newToggle.GetComponent<Toggle>();
-            toggleComponent.onValueChanged.AddListener(delegate {
-                OutputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
+            toggleComponent.onValueChanged.AddListener(arg0 =>
+            {
+                this.OutputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
             });
 
-            //label text
+            // label text
             TextMeshProUGUI labelText = newToggle.transform.Find("Label").GetComponent<TextMeshProUGUI>();
             labelText.text = CarController.PossibleOutputs[i];
 
-            outputToggles.Add(toggleComponent);
-
+            this.outputToggles.Add(toggleComponent);
         }
-
     }
 
-    public static int GetIntSetting(string name)
+    private void GenerateSettingsUIControls()
     {
-        return ((IntSetting)GetSetting(name)).value;
+        this.GenerateSettingsUIControls(GameController.Settings, "SimSettings");
+        this.GenerateSettingsUIControls(CarController.Settings, "CarSettings");
     }
 
-    public static float GetFloatSetting(string name)
+    private void GenerateSettingsUIControls(List<Setting> settings, string parentName)
     {
-        return ((FloatSetting)GetSetting(name)).value;
-    }
-
-    public static bool GetBoolSetting(string name)
-    {
-        return ((BoolSetting)GetSetting(name)).value;
-    }
-
-    public static int GetChoiceSetting(string name)
-    {
-        return ((ChoiceSetting)GetSetting(name)).value;
-    }
-
-    private static Setting GetSetting(string name)
-    {
-        List<Setting> matchingSettings = (from setting in settingsList where setting.name == name select setting).ToList();
-        if(matchingSettings.Count == 0)
-        {
-            throw new KeyNotFoundException(String.Format("Setting {0} not found", name));
-        }
-        return matchingSettings[0];
-    }
-
-    void GenerateSettingsUIControls()
-    {
-        GenerateSettingsUIControls(GameController.Settings, "SimSettings");
-        GenerateSettingsUIControls(CarController.Settings, "CarSettings");
-    }
-
-    void GenerateSettingsUIControls(List<Setting> settings, string parentName)
-    {
-
         for (int i = 0; i < settings.Count; i++)
         {
-
-            //creating and positioning label text
-            GameObject labelTextObject = Instantiate(textPrefab);
-            labelTextObject.transform.SetParent(transform.Find(parentName));
+            // creating and positioning label text
+            GameObject labelTextObject = Instantiate(this.textPrefab);
+            labelTextObject.transform.SetParent(this.transform.Find(parentName));
             RectTransform labelTextRectTransform = labelTextObject.GetComponent<RectTransform>();
-            labelTextRectTransform.anchoredPosition = new Vector2(0.0f, i * -labelTextRectTransform.sizeDelta.y - 20f);
+            labelTextRectTransform.anchoredPosition = new Vector2(0.0f, (i * -labelTextRectTransform.sizeDelta.y) - 20f);
             TextMeshProUGUI labelText = labelTextObject.GetComponent<TextMeshProUGUI>();
-            labelText.text = settings[i].name;
+            labelText.text = settings[i].Name;
             labelText.alignment = TextAlignmentOptions.MidlineRight;
 
-            //choosing which UI control to create
+            // choosing which UI control to create
             GameObject newUIControl = null;
-            if(settings[i].GetType() == typeof(IntSetting))
+            if (settings[i].GetType() == typeof(IntSetting))
             {
-                newUIControl = Instantiate(intFieldPrefab);
+                newUIControl = Instantiate(this.intFieldPrefab);
                 TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
-                inputField.text = ((IntSetting)settings[i]).value.ToString();
+                inputField.text = ((IntSetting)settings[i]).Value.ToString();
             }
             if (settings[i].GetType() == typeof(FloatSetting))
             {
-                newUIControl = Instantiate(floatFieldPrefab);
+                newUIControl = Instantiate(this.floatFieldPrefab);
                 TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
-                inputField.text = ((FloatSetting)settings[i]).value.ToString();
+                inputField.text = ((FloatSetting)settings[i]).Value.ToString();
             }
-            if(settings[i].GetType() == typeof(BoolSetting))
+            if (settings[i].GetType() == typeof(BoolSetting))
             {
-                newUIControl = Instantiate(settingsTogglePrefab);
+                newUIControl = Instantiate(this.settingsTogglePrefab);
                 Toggle toggle = newUIControl.GetComponent<Toggle>();
-                toggle.isOn = ((BoolSetting)settings[i]).value;
+                toggle.isOn = ((BoolSetting)settings[i]).Value;
             }
             if (settings[i].GetType() == typeof(ChoiceSetting))
             {
-                newUIControl = Instantiate(dropdownPrefab);
+                newUIControl = Instantiate(this.dropdownPrefab);
                 TMP_Dropdown dropdown = newUIControl.GetComponent<TMP_Dropdown>();
-                ChoiceSetting setting = ((ChoiceSetting)settings[i]);
-                dropdown.AddOptions(setting.choices);
-                dropdown.value = setting.value;
+                ChoiceSetting setting = (ChoiceSetting)settings[i];
+                dropdown.AddOptions(setting.Choices);
+                dropdown.value = setting.Value;
             }
 
-            settings[i].control = newUIControl;
-            settingsList.Add(settings[i]);
+            settings[i].Control = newUIControl;
+            SettingsList.Add(settings[i]);
             newUIControl.transform.SetParent(labelTextObject.transform, false);
 
-            //related input name will be tied to it
+            // related input name will be tied to it
             TextProperty settingName = newUIControl.GetComponent<TextProperty>();
-            settingName.text = settings[i].name;
+            settingName.text = settings[i].Name;
 
-            //setting position on canvas
+            // setting position on canvas
             RectTransform rectTransformComponent = newUIControl.GetComponent<RectTransform>();
             rectTransformComponent.anchoredPosition += new Vector2(170.0f, 0.0f);
-
-
         }
-
     }
 
     /// <summary>
-    /// Makes inputs/outputs of the loaded neural network match inputs/outputs in the simulation
+    /// Makes inputs/outputs of the loaded neural network match inputs/outputs in the simulation.
     /// </summary>
-    void UpdateInputsOutputs()
+    private void UpdateInputsOutputs()
     {
-
-        //counters will be shown to user
+        // counters will be shown to user
         int inputsAdded = 0;
         int inputsRemoved = 0;
         int outputsAdded = 0;
         int outputsRemoved = 0;
 
-        //adding missing inputs
-        foreach (string inputName in registeredInputs)
+        // adding missing inputs
+        foreach (string inputName in RegisteredInputs)
         {
             try
             {
-                neuralNetwork.GetNeuronByName(inputName);
+                SelectedNeuralNetwork.GetNeuronByName(inputName);
             }
             catch (KeyNotFoundException)
             {
-                neuralNetwork.AddInputNeuron(inputName, true);
+                SelectedNeuralNetwork.AddInputNeuron(inputName, true);
                 inputsAdded++;
             }
         }
 
-        //deleting unneeded inputs
-        foreach (Neuron inputNeuron in neuralNetwork.GetInputNeurons())
+        // deleting unneeded inputs
+        foreach (Neuron inputNeuron in SelectedNeuralNetwork.GetInputNeurons())
         {
-            if (registeredInputs.FindAll((x) => x == inputNeuron.Name).Count == 0)
+            if (RegisteredInputs.FindAll((x) => x == inputNeuron.Name).Count == 0)
             {
-                neuralNetwork.RemoveInputNeuron(inputNeuron.Name);
+                SelectedNeuralNetwork.RemoveInputNeuron(inputNeuron.Name);
                 inputsRemoved++;
             }
         }
 
-        //adding missing outputs
-        foreach (string outputName in registeredOutputs)
+        // adding missing outputs
+        foreach (string outputName in RegisteredOutputs)
         {
             try
             {
-                neuralNetwork.GetNeuronByName(outputName);
+                SelectedNeuralNetwork.GetNeuronByName(outputName);
             }
             catch (KeyNotFoundException)
             {
-                neuralNetwork.AddOutputNeuron(outputName, true);
+                SelectedNeuralNetwork.AddOutputNeuron(outputName, true);
                 outputsAdded++;
             }
         }
 
-        //deleting unneeded outputs
-        foreach (Neuron outputNeuron in neuralNetwork.GetOutputNeurons())
+        // deleting unneeded outputs
+        foreach (Neuron outputNeuron in SelectedNeuralNetwork.GetOutputNeurons())
         {
-            if (registeredOutputs.FindAll((x) => x == outputNeuron.Name).Count == 0)
+            if (RegisteredOutputs.FindAll((x) => x == outputNeuron.Name).Count == 0)
             {
-                neuralNetwork.RemoveOutputNeuron(outputNeuron);
+                SelectedNeuralNetwork.RemoveOutputNeuron(outputNeuron);
                 outputsRemoved++;
             }
         }
 
-        //updating UI text
-        inputOutputCountText.text = String.Format("Inputs: +{0}/-{1}    Outputs: +{2}/-{3}", inputsAdded, inputsRemoved, outputsAdded, outputsRemoved);
-
+        // updating UI text
+        this.inputOutputCountText.text = string.Format("Inputs: +{0}/-{1}    Outputs: +{2}/-{3}", inputsAdded, inputsRemoved, outputsAdded, outputsRemoved);
     }
 
-    public void LoadNetwork(string filename)
+    /// <summary>
+    /// Loads neural network from file and updates string with input/output count.
+    /// </summary>
+    /// <param name="filename">Name of the file.</param>
+    private void LoadNetwork(string filename)
     {
-
-        if(networkFile == "")
+        if (this.networkFile == string.Empty)
         {
             return;
         }
 
-        neuralNetwork = NeuralNetwork.LoadFromFile(filename);
+        SelectedNeuralNetwork = NeuralNetwork.LoadFromFile(filename);
 
-        //inputs/outputs in the network might not match inputs/outputs in the simulation, so neural network has to be updated
-        UpdateInputsOutputs();
-
-    }
-
-    public void SelectNetworkFile()
-    {
-
-        //if there is no "Networks" folder, create it
-        Directory.CreateDirectory(networksFolderPath);
-
-        string[] fileList = StandaloneFileBrowser.OpenFilePanel("Select network file", networksFolderPath, "txt", false);
-
-        if(fileList.Length > 0)
-        {
-
-            //getting filename
-            networkFile = fileList[0];
-            openFileText.text = Path.GetFileName(networkFile);
-
-            LoadNetwork(networkFile);
-
-        }
-
-    }
-
-    public void ClearNetworkFile()
-    {
-        neuralNetwork = null;
-        openFileText.text = "<none>";
-        inputOutputCountText.text = "";
-    }
-
-    public void ResetFitnessToggle(bool value)
-    {
-        resetFitness = value;
-    }
-
-    public void SelectTrackDropdown(int index)
-    {
-        trackIndex = index;
+        // inputs/outputs in the network might not match inputs/outputs in the simulation, so neural network has to be updated
+        this.UpdateInputsOutputs();
     }
 
     /// <summary>
-    /// Loads config file and sets values of UI controls to values from the file
+    /// Loads config file and sets values of UI controls to values from the file.
     /// </summary>
-    void LoadConfig()
+    private void LoadConfig()
     {
         Config config;
         try
         {
             config = Config.Load();
         }
-        catch(FileNotFoundException)
+        catch (FileNotFoundException)
         {
             return;
         }
-        foreach(Setting settingFromConfig in config.settings)
+        foreach (Setting settingFromConfig in config.Settings)
         {
-            GameObject control = (from settingFromSettingsList 
-                                  in settingsList
-                                  where settingFromSettingsList.name == settingFromConfig.name
-                                  select settingFromSettingsList.control).First();
-            if(control == null)
+            GameObject control = (from settingFromSettingsList
+                                  in SettingsList
+                                  where settingFromSettingsList.Name == settingFromConfig.Name
+                                  select settingFromSettingsList.Control).First();
+            if (control == null)
             {
                 continue;
             }
             switch (settingFromConfig.GetType().Name)
             {
-                case nameof(IntSetting):    control.GetComponent<TMP_InputField>().text = ((IntSetting)settingFromConfig).value.ToString();     break;
-                case nameof(FloatSetting):  control.GetComponent<TMP_InputField>().text = ((FloatSetting)settingFromConfig).value.ToString();   break;
-                case nameof(BoolSetting):   control.GetComponent<Toggle>().isOn         = ((BoolSetting)settingFromConfig).value;               break;
-                case nameof(ChoiceSetting): control.GetComponent<TMP_Dropdown>().value  = ((ChoiceSetting)settingFromConfig).value;             break;
-                default: Debug.Log(String.Format("Setting type {0} is unknown", settingFromConfig.GetType().Name)); break;
+                case nameof(IntSetting): control.GetComponent<TMP_InputField>().text = ((IntSetting)settingFromConfig).Value.ToString();     break;
+                case nameof(FloatSetting): control.GetComponent<TMP_InputField>().text = ((FloatSetting)settingFromConfig).Value.ToString(); break;
+                case nameof(BoolSetting): control.GetComponent<Toggle>().isOn = ((BoolSetting)settingFromConfig).Value;                      break;
+                case nameof(ChoiceSetting): control.GetComponent<TMP_Dropdown>().value = ((ChoiceSetting)settingFromConfig).Value;           break;
+                default: Debug.Log(string.Format("Setting type {0} is unknown", settingFromConfig.GetType().Name));                          break;
             }
         }
     }
 
     /// <summary>
-    /// Saves values set by UI controls to config file
+    /// Saves values set by UI controls to config file.
     /// </summary>
-    void SaveConfig()
+    private void SaveConfig()
     {
-        Config config = new Config(settingsList);
+        Config config = new Config(SettingsList);
         config.Save();
     }
 
-    public void StartSimulation()
+    /// <summary>
+    /// Represents UI control with its value.
+    /// </summary>
+    [DataContract(Name = "Setting")]
+    [KnownType(typeof(IntSetting))]
+    [KnownType(typeof(FloatSetting))]
+    [KnownType(typeof(BoolSetting))]
+    [KnownType(typeof(ChoiceSetting))]
+    public class Setting
     {
+        [DataMember]
+        private string name;
 
-        //GameObjects are going to be destroyed, so data has to be saved
-        foreach(Setting setting in settingsList)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Setting"/> class.
+        /// </summary>
+        /// <param name="name">Name of the setting.</param>
+        public Setting(string name)
         {
-            GameObject control = setting.control;
-            switch(setting.GetType().Name)
-            {
-                case nameof(IntSetting):    ((IntSetting)setting).value    = Int32.Parse(control.GetComponent<TMP_InputField>().text); break;
-                case nameof(FloatSetting):  ((FloatSetting)setting).value  = float.Parse(control.GetComponent<TMP_InputField>().text); break;
-                case nameof(BoolSetting):   ((BoolSetting)setting).value   = control.GetComponent<Toggle>().isOn;                      break;
-                case nameof(ChoiceSetting): ((ChoiceSetting)setting).value = control.GetComponent<TMP_Dropdown>().value;               break;
-            }
+            this.Name = name;
         }
 
-        SaveConfig();
+        /// <summary>
+        /// Name of the setting.
+        /// </summary>
+        public string Name { get => this.name; set => this.name = value; }
 
-        SceneManager.LoadScene("MainScene");
-
+        /// <summary>
+        /// UI control associated with the setting.
+        /// </summary>
+        public GameObject Control { get; set; }
     }
 
+    /// <summary>
+    /// Represents integer input field UI control and it's value.
+    /// </summary>
+    [DataContract(Name = "IntSetting")]
+    public class IntSetting : Setting
+    {
+        [DataMember]
+        private int value;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IntSetting"/> class.
+        /// </summary>
+        /// <param name="name">Name of the setting.</param>
+        /// <param name="value">Value of the setting.</param>
+        public IntSetting(string name, int value)
+            : base(name)
+        {
+            this.Name = name;
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Value of the setting.
+        /// </summary>
+        public int Value { get => this.value; set => this.value = value; }
+    }
+
+    /// <summary>
+    /// Represents float input field UI control and it's value.
+    /// </summary>
+    [DataContract(Name = "FloatSetting")]
+    public class FloatSetting : Setting
+    {
+        [DataMember]
+        private float value;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FloatSetting"/> class.
+        /// </summary>
+        /// <param name="name">Name of the setting.</param>
+        /// <param name="value">Value of the setting.</param>
+        public FloatSetting(string name, float value)
+            : base(name)
+        {
+            this.Name = name;
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Value of the setting.
+        /// </summary>
+        public float Value { get => this.value; set => this.value = value; }
+    }
+
+    /// <summary>
+    /// Represents toggle UI control and it's value.
+    /// </summary>
+    [DataContract(Name = "BoolSetting")]
+    public class BoolSetting : Setting
+    {
+        [DataMember]
+        private bool value;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BoolSetting"/> class.
+        /// </summary>
+        /// <param name="name">Name of the setting.</param>
+        /// <param name="value">Value of the setting.</param>
+        public BoolSetting(string name, bool value)
+            : base(name)
+        {
+            this.Name = name;
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Value of the setting.
+        /// </summary>
+        public bool Value { get => this.value; set => this.value = value; }
+    }
+
+    /// <summary>
+    /// Represents dropdown UI control and it's value.
+    /// </summary>
+    [DataContract(Name = "ChoiceSetting")]
+    public class ChoiceSetting : Setting
+    {
+        [DataMember]
+        private int value;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ChoiceSetting"/> class.
+        /// </summary>
+        /// <param name="name">Name of the setting.</param>
+        /// <param name="choices">List of choices in the dropdown.</param>
+        /// <param name="value">Value of the setting.</param>
+        public ChoiceSetting(string name, List<string> choices, int value)
+            : base(name)
+        {
+            this.Name = name;
+            this.Choices = choices;
+            this.Value = value;
+        }
+
+        /// <summary>
+        /// Value of the setting.
+        /// </summary>
+        public int Value { get => this.value; set => this.value = value; }
+
+        /// <summary>
+        /// List of choices availbale in the dropdown.
+        /// </summary>
+        public List<string> Choices { get; set; }
+    }
+
+    /// <summary>
+    /// Class for saving/loading settings from config file.
+    /// </summary>
+    [DataContract(Name = "Config")]
+    public class Config
+    {
+        private const string ConfigPath = "config.xml";
+
+        [DataMember]
+        private List<Setting> settings = new List<Setting>();
+        [DataMember]
+        private List<string> enabledInputList = new List<string>();
+        [DataMember]
+        private List<string> enabledOutputList = new List<string>();
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Config"/> class.
+        /// </summary>
+        /// <param name="settings">List of settings.</param>
+        public Config(List<Setting> settings)
+        {
+            this.Settings = settings;
+        }
+
+        /// <summary>
+        /// List of settings.
+        /// </summary>
+        public List<Setting> Settings { get => this.settings; set => this.settings = value; }
+
+        /// <summary>
+        /// List of enabled inputs.
+        /// </summary>
+        public List<string> EnabledInputList { get => this.enabledInputList; set => this.enabledInputList = value; }
+
+        /// <summary>
+        /// List of enabled outputs.
+        /// </summary>
+        public List<string> EnabledOutputList { get => this.enabledOutputList; set => this.enabledOutputList = value; }
+
+        /// <summary>
+        /// Load config from config file.
+        /// </summary>
+        /// <returns>Config object with lists of settings loaded from file.</returns>
+        public static Config Load()
+        {
+            Config deserializedConfig;
+            using (FileStream fs = new FileStream(ConfigPath, FileMode.Open))
+            {
+                XmlDictionaryReaderQuotas quotas = new XmlDictionaryReaderQuotas
+                {
+                    MaxDepth = 256,
+                };
+                XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(fs, quotas);
+                DataContractSerializer ser = new DataContractSerializer(typeof(Config));
+                deserializedConfig = (Config)ser.ReadObject(reader, true);
+                reader.Close();
+            }
+            return deserializedConfig;
+        }
+
+        /// <summary>
+        /// Save config to config file.
+        /// </summary>
+        public void Save()
+        {
+            var settings = new XmlWriterSettings
+            {
+                Indent = true,
+                IndentChars = "    ",
+            };
+            XmlWriter writer = XmlWriter.Create(ConfigPath, settings);
+            DataContractSerializer ser = new DataContractSerializer(typeof(Config));
+            ser.WriteObject(writer, this);
+            writer.Close();
+        }
+    }
 }

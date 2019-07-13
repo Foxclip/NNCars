@@ -11,6 +11,8 @@ using UnityEditor;
 [InitializeOnLoad]
 public class ProjectFileHook
 {
+    private const string StypCopVersionStr = "1.1.118";
+
     static ProjectFileHook()
     {
         ProjectFilesGenerator.ProjectFileGeneration += (string name, string content) =>
@@ -19,8 +21,8 @@ public class ProjectFileHook
             var document = XDocument.Parse(content);
             XNamespace xmlns = "http://schemas.microsoft.com/developer/msbuild/2003";
             XElement itemGroup = new XElement(xmlns + "ItemGroup");
-            itemGroup.Add(new XElement(xmlns + "Analyzer", new XAttribute("Include", "packages\\StyleCop.Analyzers.1.1.118\\analyzers\\dotnet\\cs\\StyleCop.Analyzers.CodeFixes.dll")));
-            itemGroup.Add(new XElement(xmlns + "Analyzer", new XAttribute("Include", "packages\\StyleCop.Analyzers.1.1.118\\analyzers\\dotnet\\cs\\StyleCop.Analyzers.dll")));
+            itemGroup.Add(new XElement(xmlns + "Analyzer", new XAttribute("Include", "packages\\StyleCop.Analyzers." + StypCopVersionStr + "\\analyzers\\dotnet\\cs\\StyleCop.Analyzers.CodeFixes.dll")));
+            itemGroup.Add(new XElement(xmlns + "Analyzer", new XAttribute("Include", "packages\\StyleCop.Analyzers." + StypCopVersionStr + "\\analyzers\\dotnet\\cs\\StyleCop.Analyzers.dll")));
             document.Root.Add(itemGroup);
             document.Root.Add(new XElement(xmlns + "ItemGroup", new XElement(xmlns + "AdditionalFiles", new XAttribute("Include", "stylecop.json"))));
             document.Root.Add(new XElement(xmlns + "ItemGroup", new XElement(xmlns + "Compile", new XAttribute("Include", "GlobalSuppressions.cs"))));

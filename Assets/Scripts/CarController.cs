@@ -37,15 +37,15 @@ public class CarController : MonoBehaviour
     /// <summary>
     /// List of variables which can be set from StartupSettings.
     /// </summary>
-    public static List<Setting> Settings { get; set; } = new List<Setting>
+    public static List<StartupSettings.Setting> Settings { get; set; } = new List<StartupSettings.Setting>
     {
-        new BoolSetting("manualControl", false),
-        new FloatSetting("maxMotorTorque", 1000.0f),
-        new FloatSetting("maxSteeringAngle", 45.0f),
-        new IntSetting("steeringSmoothing", 1),
-        new FloatSetting("inputDelay", 0.1f),
-        new FloatSetting("outputDelay", 0.1f),
-        new BoolSetting("averagedInput", true),
+        new StartupSettings.BoolSetting("manualControl", false),
+        new StartupSettings.FloatSetting("maxMotorTorque", 1000.0f),
+        new StartupSettings.FloatSetting("maxSteeringAngle", 45.0f),
+        new StartupSettings.IntSetting("steeringSmoothing", 1),
+        new StartupSettings.FloatSetting("inputDelay", 0.1f),
+        new StartupSettings.FloatSetting("outputDelay", 0.1f),
+        new StartupSettings.BoolSetting("averagedInput", true),
     };
 
     /// <summary>
@@ -89,7 +89,7 @@ public class CarController : MonoBehaviour
         for (int list_i = 0; list_i < this.inputSteps; list_i++)
         {
             Dictionary<string, double> emptyInput = new Dictionary<string, double>();
-            foreach (string inputName in StartupSettings.registeredInputs)
+            foreach (string inputName in StartupSettings.RegisteredInputs)
             {
                 emptyInput.Add(inputName, 0.0);
             }
@@ -101,7 +101,7 @@ public class CarController : MonoBehaviour
         for (int list_i = 0; list_i < this.outputSteps; list_i++)
         {
             Dictionary<string, double> emptyOutput = new Dictionary<string, double>();
-            foreach (string outputName in StartupSettings.registeredOutputs)
+            foreach (string outputName in StartupSettings.RegisteredOutputs)
             {
                 emptyOutput.Add(outputName, 0.0);
             }
@@ -165,7 +165,7 @@ public class CarController : MonoBehaviour
             // name of neural network input, as opposed to name of the object in the scene
             string rayOriginName = rayOrigin.name.Replace(" ", string.Empty);
 
-            if (!StartupSettings.registeredInputs.Contains(rayOriginName))
+            if (!StartupSettings.RegisteredInputs.Contains(rayOriginName))
             {
                 continue;
             }
@@ -182,13 +182,13 @@ public class CarController : MonoBehaviour
         }
 
         // adding velocity
-        if (StartupSettings.registeredInputs.Contains("Speed"))
+        if (StartupSettings.RegisteredInputs.Contains("Speed"))
         {
             nnInputs.Add("Speed", this.rb.velocity.magnitude);
         }
 
         // adding slip of the front wheels
-        if (StartupSettings.registeredInputs.Contains("FrontSlip"))
+        if (StartupSettings.RegisteredInputs.Contains("FrontSlip"))
         {
             double frontWheelSlip = 0.0;
             AxleInfo frontAxle = this.axleInfos[0];
@@ -200,7 +200,7 @@ public class CarController : MonoBehaviour
         }
 
         // adding slip of the rear wheels
-        if (StartupSettings.registeredInputs.Contains("RearSlip"))
+        if (StartupSettings.RegisteredInputs.Contains("RearSlip"))
         {
             double rearWheelsSlip = 0.0;
             AxleInfo rearAxle = this.axleInfos[1];
@@ -222,7 +222,7 @@ public class CarController : MonoBehaviour
             Dictionary<string, double>[] inputs = this.inputQueue.ToArray();
 
             // dictionary for results
-            foreach (string inputName in StartupSettings.registeredInputs)
+            foreach (string inputName in StartupSettings.RegisteredInputs)
             {
                 currentInputs.Add(inputName, 0.0);
             }
@@ -230,14 +230,14 @@ public class CarController : MonoBehaviour
             // summing input values
             foreach (Dictionary<string, double> input in inputs)
             {
-                foreach (string inputName in StartupSettings.registeredInputs)
+                foreach (string inputName in StartupSettings.RegisteredInputs)
                 {
                     currentInputs[inputName] += input[inputName];
                 }
             }
 
             // dividing by length to find average
-            foreach (string inputName in StartupSettings.registeredInputs)
+            foreach (string inputName in StartupSettings.RegisteredInputs)
             {
                 currentInputs[inputName] /= inputs.Length;
             }
@@ -268,14 +268,14 @@ public class CarController : MonoBehaviour
         }
         else
         {
-            if (StartupSettings.registeredOutputs.Contains("motor"))
+            if (StartupSettings.RegisteredOutputs.Contains("motor"))
             {
                 motor = this.maxMotorTorque * (float)currentOutputs["motor"];
 
                 // car should not go backwards
                 motor = Mathf.Max(0.0f, motor);
             }
-            if (StartupSettings.registeredOutputs.Contains("steering"))
+            if (StartupSettings.RegisteredOutputs.Contains("steering"))
             {
                 steering = this.maxSteeringAngle * (float)currentOutputs["steering"];
             }
