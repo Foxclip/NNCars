@@ -218,7 +218,7 @@ public class StartupSettings : MonoBehaviour
         RegisteredInputs.Clear();
         foreach (Toggle toggle in this.inputToggles)
         {
-            string inputName = toggle.GetComponent<TextProperty>().text;
+            string inputName = toggle.GetComponent<TextProperty>().Text;
             if (toggle.isOn)
             {
                 RegisteredInputs.Add(inputName);
@@ -231,7 +231,7 @@ public class StartupSettings : MonoBehaviour
         RegisteredOutputs.Clear();
         foreach (Toggle toggle in this.outputToggles)
         {
-            string outputName = toggle.GetComponent<TextProperty>().text;
+            string outputName = toggle.GetComponent<TextProperty>().Text;
             if (toggle.isOn)
             {
                 RegisteredOutputs.Add(outputName);
@@ -267,7 +267,7 @@ public class StartupSettings : MonoBehaviour
 
             // related input name will be tied to it
             TextProperty inputName = newToggle.GetComponent<TextProperty>();
-            inputName.text = CarController.PossibleInputs[i];
+            inputName.Text = CarController.PossibleInputs[i];
 
             // setting position on canvas
             RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
@@ -277,7 +277,7 @@ public class StartupSettings : MonoBehaviour
             Toggle toggleComponent = newToggle.GetComponent<Toggle>();
             toggleComponent.onValueChanged.AddListener(arg0 =>
             {
-                this.InputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
+                this.InputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().Text);
             });
 
             // label text
@@ -296,7 +296,7 @@ public class StartupSettings : MonoBehaviour
 
             // related output name will be tied to it
             TextProperty outputName = newToggle.GetComponent<TextProperty>();
-            outputName.text = CarController.PossibleOutputs[i];
+            outputName.Text = CarController.PossibleOutputs[i];
 
             // setting position on canvas
             RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
@@ -306,7 +306,7 @@ public class StartupSettings : MonoBehaviour
             Toggle toggleComponent = newToggle.GetComponent<Toggle>();
             toggleComponent.onValueChanged.AddListener(arg0 =>
             {
-                this.OutputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().text);
+                this.OutputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().Text);
             });
 
             // label text
@@ -371,7 +371,7 @@ public class StartupSettings : MonoBehaviour
 
             // related input name will be tied to it
             TextProperty settingName = newUIControl.GetComponent<TextProperty>();
-            settingName.text = settings[i].Name;
+            settingName.Text = settings[i].Name;
 
             // setting position on canvas
             RectTransform rectTransformComponent = newUIControl.GetComponent<RectTransform>();
