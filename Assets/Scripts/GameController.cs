@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.Serialization;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -39,25 +40,6 @@ public class GameController : MonoBehaviour
 
 #pragma warning restore IDE0044 // Add readonly modifier
 
-    private int layerCount = 1;                      // number of hidden layers neural network will have
-    private int neuronsInLayer = 16;                 // number of neurons in hidden layers
-    private int populationSize = 10;                 // number of diffrerent neural networks in generation
-    private int passCount = 3;                       // to improve stability of the solution, several passes are made for each neural network
-    private float mutationPower = 10;                // how likely small mutations are
-    private float maxMutation = 1;                   // maximal amount of mutation in generation
-    private float speedupTimeScale = 10;             // when pressing Space, simulation will speed up
-    private float checkpointReachDistance = 3.0f;    // checkpoint is counted as reached when car is within this distance
-    private double randomAngleMin = -25.0;           // minimal angle of random rotation in the beginning of each pass
-    private double randomAngleMax = 25.0;            // maximal angle
-
-    private RunAcceptMode runAcceptMode;             // determines how fitness of the run is calculated
-
-    private double terminationDelay = 1.0;           // pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time
-    private double terminationSpeed = 0.2;           // what speed is too low
-    private double checkpointBonusWeight = 100.0;    // weight of the checkpoint bonus
-    private double distanceBonusWeight = 10.0;       // weight of the distance bonus
-    private double speedBonusWeight = 0.01;          // weight of the speed bonus
-
     private CarController carController;                                    // CarController script
     private Transform track;                                                // transform of the track
 #pragma warning disable SA1214 // Readonly fields should appear before non-readonly fields
@@ -82,34 +64,26 @@ public class GameController : MonoBehaviour
     private int breakthroughCount = 0;                                      // how much fitness improvements happened with this neural network
     private bool fastForward = false;                                       // whether fast forward function is activated
 
-    private enum RunAcceptMode
+    /// <summary>
+    /// Determines how run fitness is calculated.
+    /// </summary>
+    internal enum RunAcceptModes
     {
+        /// <summary>
+        /// Run fitness is fitness of the worst pass in the run.
+        /// </summary>
         All,
+
+        /// <summary>
+        /// Run fitness is fitness of the median pass in the run.
+        /// </summary>
         Median,
     }
 
     /// <summary>
-    /// List of settings available to be set from StartupSettings screen.
+    /// Current simulation settings.
     /// </summary>
-    public static List<StartupSettings.Setting> Settings { get; set; } = new List<StartupSettings.Setting>()
-    {
-        new StartupSettings.IntSetting("layerCount", 1),
-        new StartupSettings.IntSetting("neuronsInLayer", 2),
-        new StartupSettings.IntSetting("populationSize", 10),
-        new StartupSettings.IntSetting("passCount", 5),
-        new StartupSettings.FloatSetting("mutationPower", 3.0f),
-        new StartupSettings.FloatSetting("maxMutation", 1.0f),
-        new StartupSettings.FloatSetting("speedupTimeScale", 100.0f),
-        new StartupSettings.FloatSetting("checkpointReachDistance", 5.0f),
-        new StartupSettings.FloatSetting("randomAngleMin", -22.0f),
-        new StartupSettings.FloatSetting("randomAngleMax", 22.0f),
-        new StartupSettings.ChoiceSetting("runAcceptMode", new List<string> { "All", "Median" }, 0),
-        new StartupSettings.FloatSetting("terminationDelay", 1.0f),
-        new StartupSettings.FloatSetting("terminationSpeed", 0.5f),
-        new StartupSettings.FloatSetting("checkpointBonusWeight", 100.0f),
-        new StartupSettings.FloatSetting("distanceBonusWeight", 10.0f),
-        new StartupSettings.FloatSetting("speedBonusWeight", 1.0f),
-    };
+    public static SimulationSettings Settings { get; set; } = new SimulationSettings();
 
     /// <summary>
     /// Current generation of neural netwroks.
@@ -133,24 +107,6 @@ public class GameController : MonoBehaviour
 
     private void Start()
     {
-        // loading settings
-        this.layerCount = StartupSettings.GetIntSetting("layerCount");
-        this.neuronsInLayer = StartupSettings.GetIntSetting("neuronsInLayer");
-        this.populationSize = StartupSettings.GetIntSetting("populationSize");
-        this.passCount = StartupSettings.GetIntSetting("passCount");
-        this.mutationPower = StartupSettings.GetFloatSetting("mutationPower");
-        this.maxMutation = StartupSettings.GetFloatSetting("maxMutation");
-        this.speedupTimeScale = StartupSettings.GetFloatSetting("speedupTimeScale");
-        this.checkpointReachDistance = StartupSettings.GetFloatSetting("checkpointReachDistance");
-        this.randomAngleMin = StartupSettings.GetFloatSetting("randomAngleMin");
-        this.randomAngleMax = StartupSettings.GetFloatSetting("randomAngleMax");
-        this.runAcceptMode = (RunAcceptMode)StartupSettings.GetChoiceSetting("runAcceptMode");
-        this.terminationDelay = StartupSettings.GetFloatSetting("terminationDelay");
-        this.terminationSpeed = StartupSettings.GetFloatSetting("terminationSpeed");
-        this.checkpointBonusWeight = StartupSettings.GetFloatSetting("checkpointBonusWeight");
-        this.distanceBonusWeight = StartupSettings.GetFloatSetting("distanceBonusWeight");
-        this.speedBonusWeight = StartupSettings.GetFloatSetting("speedBonusWeight");
-
         // getting CarController
         this.carController = this.carObject.GetComponent<CarController>();
 
@@ -185,7 +141,7 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            this.bestNetwork = new NeuralNetwork(StartupSettings.RegisteredInputs, StartupSettings.RegisteredOutputs, this.layerCount, this.neuronsInLayer);
+            this.bestNetwork = new NeuralNetwork(StartupSettings.RegisteredInputs, StartupSettings.RegisteredOutputs, Settings.LayerCount, Settings.NeuronsInLayer);
         }
 
         // preparing simulation
@@ -205,7 +161,7 @@ public class GameController : MonoBehaviour
             }
             else
             {
-                Time.timeScale = this.speedupTimeScale;
+                Time.timeScale = Settings.SpeedupTimeScale;
             }
             this.fastForward = !this.fastForward;
         }
@@ -230,13 +186,13 @@ public class GameController : MonoBehaviour
 
     private bool CheckDeathConditions()
     {
-        if (this.fitnessDeathTimer > this.terminationDelay || this.speedDeathTimer > this.terminationDelay || this.carObject.transform.position.y < 0.0f || this.CollisionDetected || this.NextCheckpoint >= this.checkpoints.Count)
+        if (this.fitnessDeathTimer > Settings.TerminationDelay || this.speedDeathTimer > Settings.TerminationDelay || this.carObject.transform.position.y < 0.0f || this.CollisionDetected || this.NextCheckpoint >= this.checkpoints.Count)
         {
-            if (this.fitnessDeathTimer > this.terminationDelay)
+            if (this.fitnessDeathTimer > Settings.TerminationDelay)
             {
                 Debug.Log("FITNESS Max: " + this.bestFitnessInThisPass + " Current: " + this.PassFitness);
             }
-            if (this.speedDeathTimer > this.terminationDelay)
+            if (this.speedDeathTimer > Settings.TerminationDelay)
             {
                 Debug.Log("SPEED");
             }
@@ -273,7 +229,7 @@ public class GameController : MonoBehaviour
 
         // speed timer
         double currentCarVelocity = this.carObject.GetComponent<Rigidbody>().velocity.magnitude;
-        if (currentCarVelocity < this.terminationSpeed)
+        if (currentCarVelocity < Settings.TerminationSpeed)
         {
             this.speedDeathTimer += Time.fixedDeltaTime;
         }
@@ -288,7 +244,7 @@ public class GameController : MonoBehaviour
         // has to update next checkpoint first
         if (this.NextCheckpoint < this.checkpoints.Count)
         {
-            if (Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position) < this.checkpointReachDistance)
+            if (Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position) < Settings.CheckpointReachDistance)
             {
                 this.NextCheckpoint++;
             }
@@ -299,11 +255,11 @@ public class GameController : MonoBehaviour
         if (this.NextCheckpoint < this.checkpoints.Count)
         {
             float distanceToNextCheckpoint = Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position);
-            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * this.distanceBonusWeight;
+            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * Settings.DistanceBonusWeight;
         }
 
         // checkpoint bonus
-        double checkpointBonus = this.NextCheckpoint * this.checkpointBonusWeight;
+        double checkpointBonus = this.NextCheckpoint * Settings.CheckpointBonusWeight;
 
         this.PassFitness = checkpointBonus + distanceBonus;
     }
@@ -374,11 +330,11 @@ public class GameController : MonoBehaviour
     {
         // creating new neural networks
         List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
-        for (int i = 0; i < this.populationSize; i++)
+        for (int i = 0; i < Settings.PopulationSize; i++)
         {
             // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
             NeuralNetwork newNetwork = this.bestNetwork.Copy();
-            newNetwork.Mutate(1, this.maxMutation * Math.Pow((double)i / this.populationSize, this.mutationPower));
+            newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow((double)i / Settings.PopulationSize, Settings.MutationPower));
             newGeneration.Add(newNetwork);
         }
 
@@ -407,7 +363,7 @@ public class GameController : MonoBehaviour
         double runFitness = 0.0;
 
         // if mode is Median, we take median pass
-        if (this.runAcceptMode == RunAcceptMode.Median)
+        if (Settings.RunAcceptMode == RunAcceptModes.Median)
         {
             Pass medianPass = this.passes[(this.passes.Count - 1) / 2];
             runFitness = medianPass.Fitness;
@@ -418,7 +374,7 @@ public class GameController : MonoBehaviour
         }
 
         // if it is All, we take the worst pass
-        else if (this.runAcceptMode == RunAcceptMode.All)
+        else if (Settings.RunAcceptMode == RunAcceptModes.All)
         {
             this.passes.Sort((x, y) => x.Fitness.CompareTo(y.Fitness));
             runFitness = this.passes[0].Fitness;
@@ -456,7 +412,7 @@ public class GameController : MonoBehaviour
         if (this.NextCheckpoint < this.checkpoints.Count)
         {
             double averageSpeed = this.distance / this.timer;
-            speedBonus = Math.Tanh(averageSpeed * this.speedBonusWeight);
+            speedBonus = Math.Tanh(averageSpeed * Settings.SpeedBonusWeight);
             timeBonus = 0.0;
         }
         else
@@ -492,7 +448,7 @@ public class GameController : MonoBehaviour
         Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
 
         // if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
-        if (this.runAcceptMode == RunAcceptMode.All && this.PassFitness < this.bestRunFitness)
+        if (Settings.RunAcceptMode == RunAcceptModes.All && this.PassFitness < this.bestRunFitness)
         {
             return true;
         }
@@ -519,7 +475,7 @@ public class GameController : MonoBehaviour
         this.carController.ResetQueues();
 
         // randomized rotation
-        this.carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(this.passIndex, 0, this.passCount - 1, this.randomAngleMin, this.randomAngleMax));
+        this.carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(this.passIndex, 0, Settings.PassCount - 1, Settings.RandomAngleMin, Settings.RandomAngleMax));
 
         Debug.Log("Generation " + this.generationIndex + " Car: " + this.runIndex + " Pass: " + this.passIndex + " Max: " + this.bestRunFitness + " Gen: " + this.breakthroughGen + " Car: " + this.breakthroughRun);
     }
@@ -531,7 +487,7 @@ public class GameController : MonoBehaviour
 
         this.runIndex++;
 
-        if (this.runIndex > this.populationSize - 1)
+        if (this.runIndex > Settings.PopulationSize - 1)
         {
             this.NextGeneration();
         }
@@ -547,7 +503,7 @@ public class GameController : MonoBehaviour
 
         this.passIndex++;
 
-        if (this.passIndex > this.passCount - 1 || runAborted)
+        if (this.passIndex > Settings.PassCount - 1 || runAborted)
         {
             this.NextRun();
         }
@@ -561,5 +517,108 @@ public class GameController : MonoBehaviour
         public double Fitness;
         public double Time;
         public double NextCheckpoint;
+    }
+
+    /// <summary>
+    /// Settings which are saved and loaded from config file.
+    /// </summary>
+    [DataContract(Name = "SimulationSettings")]
+    public class SimulationSettings : StartupSettings.AbstractSettings
+    {
+        /// <summary>
+        /// Number of hidden layers neural network will have.
+        /// </summary>
+        [DataMember]
+        public int LayerCount { get; set; } = 1;
+
+        /// <summary>
+        /// Number of neurons in hidden layers.
+        /// </summary>
+        [DataMember]
+        public int NeuronsInLayer { get; set; } = 16;
+
+        /// <summary>
+        /// Number of diffrerent neural networks in generation.
+        /// </summary>
+        [DataMember]
+        public int PopulationSize { get; set; } = 10;
+
+        /// <summary>
+        /// To improve stability of the solution, several passes are made for each neural network.
+        /// </summary>
+        [DataMember]
+        public int PassCount { get; set; } = 3;
+
+        /// <summary>
+        /// How likely small mutations are.
+        /// </summary>
+        [DataMember]
+        public float MutationPower { get; set; } = 10;
+
+        /// <summary>
+        /// Maximal amount of mutation in generation.
+        /// </summary>
+        [DataMember]
+        public float MaxMutation { get; set; } = 1;
+
+        /// <summary>
+        /// When pressing Space, simulation will speed up.
+        /// </summary>
+        [DataMember]
+        public float SpeedupTimeScale { get; set; } = 10;
+
+        /// <summary>
+        /// Checkpoint is counted as reached when car is within this distance.
+        /// </summary>
+        [DataMember]
+        public float CheckpointReachDistance { get; set; } = 3.0f;
+
+        /// <summary>
+        /// Minimal angle of random rotation in the beginning of each pass.
+        /// </summary>
+        [DataMember]
+        public double RandomAngleMin { get; set; } = -25.0;
+
+        /// <summary>
+        /// Maximal angle of random rotation in the beginning of each pass.
+        /// </summary>
+        [DataMember]
+        public double RandomAngleMax { get; set; } = 25.0;
+
+        /// <summary>
+        /// Pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time.
+        /// </summary>
+        [DataMember]
+        public double TerminationDelay { get; set; } = 1.0;
+
+        /// <summary>
+        /// What speed is too low.
+        /// </summary>
+        [DataMember]
+        public double TerminationSpeed { get; set; } = 0.2;
+
+        /// <summary>
+        /// Weight of the checkpoint bonus.
+        /// </summary>
+        [DataMember]
+        public double CheckpointBonusWeight { get; set; } = 100.0;
+
+        /// <summary>
+        /// Weight of the distance bonus.
+        /// </summary>
+        [DataMember]
+        public double DistanceBonusWeight { get; set; } = 10.0;
+
+        /// <summary>
+        /// Weight of the speed bonus.
+        /// </summary>
+        [DataMember]
+        public double SpeedBonusWeight { get; set; } = 1.0;
+
+        /// <summary>
+        /// Determines how fitness of the run is calculated.
+        /// </summary>
+        [DataMember]
+        internal RunAcceptModes RunAcceptMode { get; set; }
     }
 }

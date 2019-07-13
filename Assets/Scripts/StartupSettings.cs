@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Serialization;
@@ -17,9 +18,9 @@ using UnityEngine.UI;
 /// </summary>
 public class StartupSettings : MonoBehaviour
 {
-    private static readonly List<Setting> SettingsList = new List<Setting>();
-    private readonly List<Toggle> inputToggles = new List<Toggle>();  // toggles for choosing available inputs
-    private readonly List<Toggle> outputToggles = new List<Toggle>(); // toggles for choosing available outputs
+    private readonly List<Toggle> inputToggles = new List<Toggle>();        // toggles for choosing available inputs
+    private readonly List<Toggle> outputToggles = new List<Toggle>();       // toggles for choosing available outputs
+    private readonly List<GameObject> uiControls = new List<GameObject>();  // UI controls for settings
 
     // prefabs for UI controls
 #pragma warning disable IDE0044 // Add readonly modifier
@@ -74,46 +75,6 @@ public class StartupSettings : MonoBehaviour
     public static List<string> RegisteredOutputs { get; set; } = new List<string>();
 
     /// <summary>
-    /// Retuns value of IntSetting with specified name.
-    /// </summary>
-    /// <param name="name">Name of the setting.</param>
-    /// <returns>Value of the setting.</returns>
-    public static int GetIntSetting(string name)
-    {
-        return ((IntSetting)GetSetting(name)).Value;
-    }
-
-    /// <summary>
-    /// Retuns value of FloatSetting with specified name.
-    /// </summary>
-    /// <param name="name">Name of the setting.</param>
-    /// <returns>Value of the setting.</returns>
-    public static float GetFloatSetting(string name)
-    {
-        return ((FloatSetting)GetSetting(name)).Value;
-    }
-
-    /// <summary>
-    /// Retuns value of BoolSetting with specified name.
-    /// </summary>
-    /// <param name="name">Name of the setting.</param>
-    /// <returns>Value of the setting.</returns>
-    public static bool GetBoolSetting(string name)
-    {
-        return ((BoolSetting)GetSetting(name)).Value;
-    }
-
-    /// <summary>
-    /// Retuns value of ChoiceSetting with specified name.
-    /// </summary>
-    /// <param name="name">Name of the setting.</param>
-    /// <returns>Value of the setting.</returns>
-    public static int GetChoiceSetting(string name)
-    {
-        return ((ChoiceSetting)GetSetting(name)).Value;
-    }
-
-    /// <summary>
     /// Select Network button event.
     /// </summary>
     public void SelectNetworkFile()
@@ -166,32 +127,52 @@ public class StartupSettings : MonoBehaviour
     /// </summary>
     public void StartSimulation()
     {
-        // GameObjects are going to be destroyed, so data has to be saved
-        foreach (Setting setting in SettingsList)
-        {
-            GameObject control = setting.Control;
-            switch (setting.GetType().Name)
-            {
-                case nameof(IntSetting): ((IntSetting)setting).Value = int.Parse(control.GetComponent<TMP_InputField>().text); break;
-                case nameof(FloatSetting): ((FloatSetting)setting).Value = float.Parse(control.GetComponent<TMP_InputField>().text); break;
-                case nameof(BoolSetting): ((BoolSetting)setting).Value = control.GetComponent<Toggle>().isOn; break;
-                case nameof(ChoiceSetting): ((ChoiceSetting)setting).Value = control.GetComponent<TMP_Dropdown>().value; break;
-            }
-        }
+        this.FillSettings(GameController.Settings);
+        this.FillSettings(CarController.Settings);
 
         this.SaveConfig();
 
         SceneManager.LoadScene("MainScene");
     }
 
-    private static Setting GetSetting(string name)
+    /// <summary>
+    /// Fills settings with values from the UI controls.
+    /// </summary>
+    /// <param name="settings">Settings to be filled.</param>
+    private void FillSettings(AbstractSettings settings)
     {
-        List<Setting> matchingSettings = (from setting in SettingsList where setting.Name == name select setting).ToList();
-        if (matchingSettings.Count == 0)
+        PropertyInfo[] properties = settings.GetType().GetProperties();
+        foreach (PropertyInfo property in properties)
         {
-            throw new KeyNotFoundException(string.Format("Setting {0} not found", name));
+            Debug.Log(property.Name);
+            GameObject control = (from uiControl
+                                  in this.uiControls
+                                  where uiControl.GetComponent<TextProperty>().Text == property.Name
+                                  select uiControl).First();
+            switch (property.PropertyType.Name)
+            {
+                case nameof(Int32):
+                    property.SetValue(settings, int.Parse(control.GetComponent<TMP_InputField>().text));
+                    break;
+                case nameof(Single):
+                case nameof(Double):
+                    property.SetValue(settings, float.Parse(control.GetComponent<TMP_InputField>().text));
+                    break;
+                case nameof(Boolean):
+                    property.SetValue(settings, control.GetComponent<Toggle>().isOn);
+                    break;
+                default:
+                    if (property.PropertyType.IsEnum)
+                    {
+                        property.SetValue(settings, control.GetComponent<TMP_Dropdown>().value);
+                    }
+                    else
+                    {
+                        Debug.Assert(false, string.Format("Setting type {0} is not supproted", property.PropertyType.Name));
+                    }
+                    break;
+            }
         }
-        return matchingSettings[0];
     }
 
     private void Start()
@@ -323,9 +304,10 @@ public class StartupSettings : MonoBehaviour
         this.GenerateSettingsUIControls(CarController.Settings, "CarSettings");
     }
 
-    private void GenerateSettingsUIControls(List<Setting> settings, string parentName)
+    private void GenerateSettingsUIControls(AbstractSettings settings, string parentName)
     {
-        for (int i = 0; i < settings.Count; i++)
+        PropertyInfo[] properties = settings.GetType().GetProperties();
+        for (int i = 0; i < properties.Length; i++)
         {
             // creating and positioning label text
             GameObject labelTextObject = Instantiate(this.textPrefab);
@@ -333,45 +315,48 @@ public class StartupSettings : MonoBehaviour
             RectTransform labelTextRectTransform = labelTextObject.GetComponent<RectTransform>();
             labelTextRectTransform.anchoredPosition = new Vector2(0.0f, (i * -labelTextRectTransform.sizeDelta.y) - 20f);
             TextMeshProUGUI labelText = labelTextObject.GetComponent<TextMeshProUGUI>();
-            labelText.text = settings[i].Name;
+            labelText.text = properties[i].Name;
             labelText.alignment = TextAlignmentOptions.MidlineRight;
 
             // choosing which UI control to create
             GameObject newUIControl = null;
-            if (settings[i].GetType() == typeof(IntSetting))
+            if (properties[i].PropertyType == typeof(int))
             {
                 newUIControl = Instantiate(this.intFieldPrefab);
                 TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
-                inputField.text = ((IntSetting)settings[i]).Value.ToString();
+                inputField.text = properties[i].GetValue(settings).ToString();
             }
-            if (settings[i].GetType() == typeof(FloatSetting))
+            else if (properties[i].PropertyType == typeof(float) || properties[i].PropertyType == typeof(double))
             {
                 newUIControl = Instantiate(this.floatFieldPrefab);
                 TMP_InputField inputField = newUIControl.GetComponent<TMP_InputField>();
-                inputField.text = ((FloatSetting)settings[i]).Value.ToString();
+                inputField.text = properties[i].GetValue(settings).ToString();
             }
-            if (settings[i].GetType() == typeof(BoolSetting))
+            else if (properties[i].PropertyType == typeof(bool))
             {
                 newUIControl = Instantiate(this.settingsTogglePrefab);
                 Toggle toggle = newUIControl.GetComponent<Toggle>();
-                toggle.isOn = ((BoolSetting)settings[i]).Value;
+                toggle.isOn = (bool)properties[i].GetValue(settings);
             }
-            if (settings[i].GetType() == typeof(ChoiceSetting))
+            else if (properties[i].PropertyType.IsEnum)
             {
                 newUIControl = Instantiate(this.dropdownPrefab);
                 TMP_Dropdown dropdown = newUIControl.GetComponent<TMP_Dropdown>();
-                ChoiceSetting setting = (ChoiceSetting)settings[i];
-                dropdown.AddOptions(setting.Choices);
-                dropdown.value = setting.Value;
+                dropdown.AddOptions(System.Enum.GetNames(properties[i].PropertyType).ToList());
+                dropdown.value = (int)properties[i].GetValue(settings);
+            }
+            else
+            {
+                Debug.Log(string.Format("{0} == {1}? {2}", properties[i].PropertyType, typeof(int), properties[i].PropertyType == typeof(int)));
+                Debug.Assert(false, string.Format("Unknown property type: {0}", properties[i].PropertyType.Name));
             }
 
-            settings[i].Control = newUIControl;
-            SettingsList.Add(settings[i]);
-            newUIControl.transform.SetParent(labelTextObject.transform, false);
-
-            // related input name will be tied to it
+            // remembering which setting this control is supposed to change, will be needed when loading settings from config
             TextProperty settingName = newUIControl.GetComponent<TextProperty>();
-            settingName.Text = settings[i].Name;
+            settingName.Text = properties[i].Name;
+
+            newUIControl.transform.SetParent(labelTextObject.transform, false);
+            this.uiControls.Add(newUIControl);
 
             // setting position on canvas
             RectTransform rectTransformComponent = newUIControl.GetComponent<RectTransform>();
@@ -473,23 +458,51 @@ public class StartupSettings : MonoBehaviour
         {
             return;
         }
-        foreach (Setting settingFromConfig in config.Settings)
+        foreach (AbstractSettings settings in config.Settings)
         {
-            GameObject control = (from settingFromSettingsList
-                                  in SettingsList
-                                  where settingFromSettingsList.Name == settingFromConfig.Name
-                                  select settingFromSettingsList.Control).First();
+            this.FillControls(settings);
+        }
+    }
+
+    /// <summary>
+    /// Fills controls with values loaded from config file.
+    /// </summary>
+    /// <param name="settings">Settings object.</param>
+    private void FillControls(AbstractSettings settings)
+    {
+        PropertyInfo[] properties = settings.GetType().GetProperties();
+        foreach (PropertyInfo property in properties)
+        {
+            GameObject control = (from uiControl
+                                  in this.uiControls
+                                  where uiControl.GetComponent<TextProperty>().Text == property.Name
+                                  select uiControl).First();
             if (control == null)
             {
                 continue;
             }
-            switch (settingFromConfig.GetType().Name)
+            switch (property.PropertyType.Name)
             {
-                case nameof(IntSetting): control.GetComponent<TMP_InputField>().text = ((IntSetting)settingFromConfig).Value.ToString();     break;
-                case nameof(FloatSetting): control.GetComponent<TMP_InputField>().text = ((FloatSetting)settingFromConfig).Value.ToString(); break;
-                case nameof(BoolSetting): control.GetComponent<Toggle>().isOn = ((BoolSetting)settingFromConfig).Value;                      break;
-                case nameof(ChoiceSetting): control.GetComponent<TMP_Dropdown>().value = ((ChoiceSetting)settingFromConfig).Value;           break;
-                default: Debug.Log(string.Format("Setting type {0} is unknown", settingFromConfig.GetType().Name));                          break;
+                case nameof(Int32):
+                    control.GetComponent<TMP_InputField>().text = property.GetValue(settings).ToString();
+                    break;
+                case nameof(Single):
+                case nameof(Double):
+                    control.GetComponent<TMP_InputField>().text = property.GetValue(settings).ToString();
+                    break;
+                case nameof(Boolean):
+                    control.GetComponent<Toggle>().isOn = (bool)property.GetValue(settings);
+                    break;
+                default:
+                    if (property.PropertyType.IsEnum)
+                    {
+                        control.GetComponent<TMP_Dropdown>().value = (int)property.GetValue(settings);
+                    }
+                    else
+                    {
+                        Debug.Log(string.Format("Setting type {0} is unknown", property.PropertyType.Name));
+                    }
+                    break;
             }
         }
     }
@@ -499,156 +512,18 @@ public class StartupSettings : MonoBehaviour
     /// </summary>
     private void SaveConfig()
     {
-        Config config = new Config(SettingsList);
+        Config config = new Config(new List<AbstractSettings> { GameController.Settings, CarController.Settings });
         config.Save();
     }
 
     /// <summary>
-    /// Represents UI control with its value.
+    /// All settings classes should be derived from this class.
     /// </summary>
-    [DataContract(Name = "Setting")]
-    [KnownType(typeof(IntSetting))]
-    [KnownType(typeof(FloatSetting))]
-    [KnownType(typeof(BoolSetting))]
-    [KnownType(typeof(ChoiceSetting))]
-    public class Setting
+    [KnownType(typeof(GameController.SimulationSettings))]
+    [KnownType(typeof(CarController.CarSettings))]
+    [DataContract(Name = "AbstractSettings")]
+    public abstract class AbstractSettings
     {
-        [DataMember]
-        private string name;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Setting"/> class.
-        /// </summary>
-        /// <param name="name">Name of the setting.</param>
-        public Setting(string name)
-        {
-            this.Name = name;
-        }
-
-        /// <summary>
-        /// Name of the setting.
-        /// </summary>
-        public string Name { get => this.name; set => this.name = value; }
-
-        /// <summary>
-        /// UI control associated with the setting.
-        /// </summary>
-        public GameObject Control { get; set; }
-    }
-
-    /// <summary>
-    /// Represents integer input field UI control and it's value.
-    /// </summary>
-    [DataContract(Name = "IntSetting")]
-    public class IntSetting : Setting
-    {
-        [DataMember]
-        private int value;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="IntSetting"/> class.
-        /// </summary>
-        /// <param name="name">Name of the setting.</param>
-        /// <param name="value">Value of the setting.</param>
-        public IntSetting(string name, int value)
-            : base(name)
-        {
-            this.Name = name;
-            this.Value = value;
-        }
-
-        /// <summary>
-        /// Value of the setting.
-        /// </summary>
-        public int Value { get => this.value; set => this.value = value; }
-    }
-
-    /// <summary>
-    /// Represents float input field UI control and it's value.
-    /// </summary>
-    [DataContract(Name = "FloatSetting")]
-    public class FloatSetting : Setting
-    {
-        [DataMember]
-        private float value;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="FloatSetting"/> class.
-        /// </summary>
-        /// <param name="name">Name of the setting.</param>
-        /// <param name="value">Value of the setting.</param>
-        public FloatSetting(string name, float value)
-            : base(name)
-        {
-            this.Name = name;
-            this.Value = value;
-        }
-
-        /// <summary>
-        /// Value of the setting.
-        /// </summary>
-        public float Value { get => this.value; set => this.value = value; }
-    }
-
-    /// <summary>
-    /// Represents toggle UI control and it's value.
-    /// </summary>
-    [DataContract(Name = "BoolSetting")]
-    public class BoolSetting : Setting
-    {
-        [DataMember]
-        private bool value;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BoolSetting"/> class.
-        /// </summary>
-        /// <param name="name">Name of the setting.</param>
-        /// <param name="value">Value of the setting.</param>
-        public BoolSetting(string name, bool value)
-            : base(name)
-        {
-            this.Name = name;
-            this.Value = value;
-        }
-
-        /// <summary>
-        /// Value of the setting.
-        /// </summary>
-        public bool Value { get => this.value; set => this.value = value; }
-    }
-
-    /// <summary>
-    /// Represents dropdown UI control and it's value.
-    /// </summary>
-    [DataContract(Name = "ChoiceSetting")]
-    public class ChoiceSetting : Setting
-    {
-        [DataMember]
-        private int value;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ChoiceSetting"/> class.
-        /// </summary>
-        /// <param name="name">Name of the setting.</param>
-        /// <param name="choices">List of choices in the dropdown.</param>
-        /// <param name="value">Value of the setting.</param>
-        public ChoiceSetting(string name, List<string> choices, int value)
-            : base(name)
-        {
-            this.Name = name;
-            this.Choices = choices;
-            this.Value = value;
-        }
-
-        /// <summary>
-        /// Value of the setting.
-        /// </summary>
-        public int Value { get => this.value; set => this.value = value; }
-
-        /// <summary>
-        /// List of choices availbale in the dropdown.
-        /// </summary>
-        public List<string> Choices { get; set; }
     }
 
     /// <summary>
@@ -659,36 +534,32 @@ public class StartupSettings : MonoBehaviour
     {
         private const string ConfigPath = "config.xml";
 
-        [DataMember]
-        private List<Setting> settings = new List<Setting>();
-        [DataMember]
-        private List<string> enabledInputList = new List<string>();
-        [DataMember]
-        private List<string> enabledOutputList = new List<string>();
-
         /// <summary>
         /// Initializes a new instance of the <see cref="Config"/> class.
         /// </summary>
-        /// <param name="settings">List of settings.</param>
-        public Config(List<Setting> settings)
+        /// <param name="settings">Settings to be saved.</param>
+        public Config(List<AbstractSettings> settings)
         {
             this.Settings = settings;
         }
 
         /// <summary>
-        /// List of settings.
-        /// </summary>
-        public List<Setting> Settings { get => this.settings; set => this.settings = value; }
-
-        /// <summary>
         /// List of enabled inputs.
         /// </summary>
-        public List<string> EnabledInputList { get => this.enabledInputList; set => this.enabledInputList = value; }
+        [DataMember]
+        public List<string> EnabledInputList { get; set; }
 
         /// <summary>
         /// List of enabled outputs.
         /// </summary>
-        public List<string> EnabledOutputList { get => this.enabledOutputList; set => this.enabledOutputList = value; }
+        [DataMember]
+        public List<string> EnabledOutputList { get; set; }
+
+        /// <summary>
+        /// Settings to be saved.
+        /// </summary>
+        [DataMember]
+        public List<AbstractSettings> Settings { get; set; }
 
         /// <summary>
         /// Load config from config file.

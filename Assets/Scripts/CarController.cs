@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using UnityEngine;
 
 /// <summary>
@@ -18,14 +19,6 @@ public class CarController : MonoBehaviour
     private GameObject gameControllerObject;                // GameController object
 #pragma warning restore IDE0044 // Add readonly modifier
 
-    private bool manualControl = false;                     // if by some reason manual keyboard control is needed
-    private float maxMotorTorque = 1000.0f;                 // maximum torque the motor can apply to wheel
-    private float maxSteeringAngle = 45.0f;                 // maximum steer angle the wheel can have
-    private int steeringSmoothing = 1;                      // how much steering is smoothed out, needed so steering will respond slower
-    private double inputDelay = 0.1;                        // inputs are fed to neural network with this delay
-    private double outputDelay = 0.1;                       // outputs are sent to the wheels, but they get there after this delay
-    private bool averagedInput = true;                      // all values in the input queue are averaged, setting this to true will lead to smoother response of the neural network
-
     private double inputSteps;                              // how long input queue is
     private double outputSteps;                             // how long ouput queue is
 
@@ -35,18 +28,9 @@ public class CarController : MonoBehaviour
     private Queue<Dictionary<string, double>> outputQueue;  // all outputs are going through this queue
 
     /// <summary>
-    /// List of variables which can be set from StartupSettings.
+    /// Car settings.
     /// </summary>
-    public static List<StartupSettings.Setting> Settings { get; set; } = new List<StartupSettings.Setting>
-    {
-        new StartupSettings.BoolSetting("manualControl", false),
-        new StartupSettings.FloatSetting("maxMotorTorque", 1000.0f),
-        new StartupSettings.FloatSetting("maxSteeringAngle", 45.0f),
-        new StartupSettings.IntSetting("steeringSmoothing", 1),
-        new StartupSettings.FloatSetting("inputDelay", 0.1f),
-        new StartupSettings.FloatSetting("outputDelay", 0.1f),
-        new StartupSettings.BoolSetting("averagedInput", true),
-    };
+    public static CarSettings Settings { get; set; } = new CarSettings();
 
     /// <summary>
     /// Names of possible inputs of the neural network.
@@ -127,15 +111,6 @@ public class CarController : MonoBehaviour
 
     private void Start()
     {
-        // loading settings
-        this.manualControl = StartupSettings.GetBoolSetting("manualControl");
-        this.maxMotorTorque = StartupSettings.GetFloatSetting("maxMotorTorque");
-        this.maxSteeringAngle = StartupSettings.GetFloatSetting("maxSteeringAngle");
-        this.steeringSmoothing = StartupSettings.GetIntSetting("steeringSmoothing");
-        this.inputDelay = StartupSettings.GetFloatSetting("inputDelay");
-        this.outputDelay = StartupSettings.GetFloatSetting("outputDelay");
-        this.averagedInput = StartupSettings.GetBoolSetting("averagedInput");
-
         // Raycasts will hit backfaces of objects
         Physics.queriesHitBackfaces = true;
 
@@ -144,8 +119,8 @@ public class CarController : MonoBehaviour
         this.rb = this.GetComponent<Rigidbody>();
 
         // calculating lengths of input/output queues
-        this.inputSteps = (int)(this.inputDelay * FPS);
-        this.outputSteps = (int)(this.outputDelay * FPS);
+        this.inputSteps = (int)(Settings.InputDelay * FPS);
+        this.outputSteps = (int)(Settings.OutputDelay * FPS);
 
         // input/output queues should be reset before starting, since neural network takes values from the front of the queue
         this.ResetQueues();
@@ -216,7 +191,7 @@ public class CarController : MonoBehaviour
 
         // and this is the dictionary for the inputs which will be fed to the neural network now
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();
-        if (this.averagedInput)
+        if (Settings.AveragedInput)
         {
             // converting queue to array
             Dictionary<string, double>[] inputs = this.inputQueue.ToArray();
@@ -261,23 +236,23 @@ public class CarController : MonoBehaviour
         // choosing between manual and automatic control
         float motor = 0.0f;
         float steering = 0.0f;
-        if (this.manualControl)
+        if (Settings.ManualControl)
         {
-            motor = this.maxMotorTorque * Input.GetAxis("Vertical");
-            steering = this.maxSteeringAngle * Input.GetAxis("Horizontal");
+            motor = Settings.MaxMotorTorque * Input.GetAxis("Vertical");
+            steering = Settings.MaxSteeringAngle * Input.GetAxis("Horizontal");
         }
         else
         {
             if (StartupSettings.RegisteredOutputs.Contains("motor"))
             {
-                motor = this.maxMotorTorque * (float)currentOutputs["motor"];
+                motor = Settings.MaxMotorTorque * (float)currentOutputs["motor"];
 
                 // car should not go backwards
                 motor = Mathf.Max(0.0f, motor);
             }
             if (StartupSettings.RegisteredOutputs.Contains("steering"))
             {
-                steering = this.maxSteeringAngle * (float)currentOutputs["steering"];
+                steering = Settings.MaxSteeringAngle * (float)currentOutputs["steering"];
             }
         }
 
@@ -285,7 +260,7 @@ public class CarController : MonoBehaviour
         foreach (AxleInfo axleInfo in this.axleInfos)
         {
             // smoothing steering by repeatedly averaging target position with position of the wheels
-            for (int i = 0; i < this.steeringSmoothing; i++)
+            for (int i = 0; i < Settings.SteeringSmoothing; i++)
             {
                 steering = (steering + axleInfo.LeftWheel.steerAngle) / 2.0f;
             }
@@ -348,5 +323,54 @@ public class CarController : MonoBehaviour
         /// Whether axle can steer.
         /// </summary>
         public bool Steering { get => this.steering; set => this.steering = value; }
+    }
+
+    /// <summary>
+    /// Car settings which will be loaded/saved to config file.
+    /// </summary>
+    [DataContract(Name = "CarSettings")]
+    public class CarSettings : StartupSettings.AbstractSettings
+    {
+        /// <summary>
+        /// If by some reason manual keyboard control is needed.
+        /// </summary>
+        [DataMember]
+        public bool ManualControl { get; set; } = false;
+
+        /// <summary>
+        /// Maximum torque the motor can apply to wheel.
+        /// </summary>
+        [DataMember]
+        public float MaxMotorTorque { get; set; } = 1000.0f;
+
+        /// <summary>
+        /// Maximum steer angle the wheel can have.
+        /// </summary>
+        [DataMember]
+        public float MaxSteeringAngle { get; set; } = 45.0f;
+
+        /// <summary>
+        /// How much steering is smoothed out, needed so steering will respond slower.
+        /// </summary>
+        [DataMember]
+        public int SteeringSmoothing { get; set; } = 1;
+
+        /// <summary>
+        /// Inputs are fed to neural network with this delay.
+        /// </summary>
+        [DataMember]
+        public double InputDelay { get; set; } = 0.1;
+
+        /// <summary>
+        /// Outputs are sent to the wheels, but they get there after this delay.
+        /// </summary>
+        [DataMember]
+        public double OutputDelay { get; set; } = 0.1;
+
+        /// <summary>
+        /// All values in the input queue are averaged, setting this to true will lead to smoother response of the neural network.
+        /// </summary>
+        [DataMember]
+        public bool AveragedInput { get; set; } = true;
     }
 }
