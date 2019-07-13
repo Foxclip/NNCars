@@ -431,9 +431,9 @@ public class StartupSettings : MonoBehaviour
         //deleting unneeded inputs
         foreach (Neuron inputNeuron in neuralNetwork.GetInputNeurons())
         {
-            if (registeredInputs.FindAll((x) => x == inputNeuron.name).Count == 0)
+            if (registeredInputs.FindAll((x) => x == inputNeuron.Name).Count == 0)
             {
-                neuralNetwork.RemoveInputNeuron(inputNeuron.name);
+                neuralNetwork.RemoveInputNeuron(inputNeuron.Name);
                 inputsRemoved++;
             }
         }
@@ -455,7 +455,7 @@ public class StartupSettings : MonoBehaviour
         //deleting unneeded outputs
         foreach (Neuron outputNeuron in neuralNetwork.GetOutputNeurons())
         {
-            if (registeredOutputs.FindAll((x) => x == outputNeuron.name).Count == 0)
+            if (registeredOutputs.FindAll((x) => x == outputNeuron.Name).Count == 0)
             {
                 neuralNetwork.RemoveOutputNeuron(outputNeuron);
                 outputsRemoved++;

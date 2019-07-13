@@ -1,8 +1,4 @@
-﻿// <copyright file="GameController.cs" company="PlaceholderCompany">
-// Copyright (c) PlaceholderCompany. All rights reserved.
-// </copyright>
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -181,10 +177,10 @@ public class GameController : MonoBehaviour
         if (StartupSettings.neuralNetwork != null)
         {
             this.bestNetwork = StartupSettings.neuralNetwork;
-            this.breakthroughCount = this.bestNetwork.breakthroughCount;
+            this.breakthroughCount = this.bestNetwork.BreakthroughCount;
             if (!StartupSettings.resetFitness)
             {
-                this.bestRunFitness = this.bestNetwork.fitness;
+                this.bestRunFitness = this.bestNetwork.Fitness;
             }
         }
         else
@@ -328,7 +324,7 @@ public class GameController : MonoBehaviour
     private void CheckBestResult(double runFitness, double runMinTime)
     {
         // has to be in here so it will be saved in the file
-        this.Generation[this.runIndex].fitness = runFitness;
+        this.Generation[this.runIndex].Fitness = runFitness;
 
         // updating fitness and best results
         // if it is same neural network (run 0), result is not accepted, except if it is first update
@@ -336,7 +332,7 @@ public class GameController : MonoBehaviour
         {
             // new breakthrough, new breakthough count
             this.breakthroughCount++;
-            this.Generation[this.runIndex].breakthroughCount = this.breakthroughCount;
+            this.Generation[this.runIndex].BreakthroughCount = this.breakthroughCount;
 
             // updating index of best run
             this.bestRunFitness = runFitness;
@@ -364,10 +360,10 @@ public class GameController : MonoBehaviour
     // is called after generation is complete
     private void PostGeneration()
     {
-        this.Generation.Sort((x, y) => -x.fitness.CompareTo(y.fitness));
+        this.Generation.Sort((x, y) => -x.Fitness.CompareTo(y.Fitness));
 
         // if we have new best result
-        if (this.Generation[0].fitness > this.bestNetwork.fitness)
+        if (this.Generation[0].Fitness > this.bestNetwork.Fitness)
         {
             this.bestNetwork = this.Generation[0];
         }
