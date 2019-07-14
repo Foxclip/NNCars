@@ -139,7 +139,7 @@ public class StartupSettings : MonoBehaviour
     /// Fills settings with values from the UI controls.
     /// </summary>
     /// <param name="settings">Settings to be filled.</param>
-    private void FillSettings(AbstractSettings settings)
+    private void FillSettings(SettingList settings)
     {
         PropertyInfo[] properties = settings.GetType().GetProperties();
         foreach (PropertyInfo property in properties)
@@ -185,51 +185,51 @@ public class StartupSettings : MonoBehaviour
         this.inputOutputCountText.text = string.Empty;
 
         this.GenerateInputOutputToggles();
-        this.UpdateRegisteredInputs();
-        this.UpdateRegisteredOutputs();
-
         this.GenerateSettingsUIControls();
 
         this.LoadConfig();
+
+        this.UpdateRegisteredInputsOutputs(RegisteredInputs, this.inputToggles);
+        this.UpdateRegisteredInputsOutputs(RegisteredOutputs, this.outputToggles);
     }
 
-    private void UpdateRegisteredInputs()
+    /// <summary>
+    /// Updates list of registered inputs or outputs with values from toggles.
+    /// </summary>
+    /// <param name="registeredList">List of registered inputs or outputs.</param>
+    /// <param name="toggleList">List of toggles.</param>
+    private void UpdateRegisteredInputsOutputs(List<string> registeredList, List<Toggle> toggleList)
     {
-        RegisteredInputs.Clear();
-        foreach (Toggle toggle in this.inputToggles)
+        registeredList.Clear();
+        foreach (Toggle toggle in toggleList)
         {
-            string inputName = toggle.GetComponent<TextProperty>().Text;
+            string name = toggle.GetComponent<TextProperty>().Text;
             if (toggle.isOn)
             {
-                RegisteredInputs.Add(inputName);
+                registeredList.Add(name);
             }
         }
     }
 
-    private void UpdateRegisteredOutputs()
+    /// <summary>
+    /// Input toggles event.
+    /// </summary>
+    private void InputToggleValueChanged()
     {
-        RegisteredOutputs.Clear();
-        foreach (Toggle toggle in this.outputToggles)
-        {
-            string outputName = toggle.GetComponent<TextProperty>().Text;
-            if (toggle.isOn)
-            {
-                RegisteredOutputs.Add(outputName);
-            }
-        }
-    }
+        this.UpdateRegisteredInputsOutputs(RegisteredInputs, this.inputToggles);
 
-    private void InputToggleValueChanged(Toggle toggle, bool value, string inputName)
-    {
-        Debug.Log("CHANGED " + toggle.GetInstanceID() + " " + inputName + " " + value);
-        this.UpdateRegisteredInputs();
+        // because list of inputs changed, neural network has to be updated accordingly
         this.LoadNetwork(this.networkFile);
     }
 
-    private void OutputToggleValueChanged(Toggle toggle, bool value, string outputName)
+    /// <summary>
+    /// Output toggles event.
+    /// </summary>
+    private void OutputToggleValueChanged()
     {
-        Debug.Log("CHANGED " + toggle.GetInstanceID() + " " + outputName + " " + value);
-        this.UpdateRegisteredOutputs();
+        this.UpdateRegisteredInputsOutputs(RegisteredOutputs, this.outputToggles);
+
+        // because list of outputs changed, neural network has to be updated accordingly
         this.LoadNetwork(this.networkFile);
     }
 
@@ -257,7 +257,7 @@ public class StartupSettings : MonoBehaviour
             Toggle toggleComponent = newToggle.GetComponent<Toggle>();
             toggleComponent.onValueChanged.AddListener(arg0 =>
             {
-                this.InputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().Text);
+                this.InputToggleValueChanged();
             });
 
             // label text
@@ -286,7 +286,7 @@ public class StartupSettings : MonoBehaviour
             Toggle toggleComponent = newToggle.GetComponent<Toggle>();
             toggleComponent.onValueChanged.AddListener(arg0 =>
             {
-                this.OutputToggleValueChanged(toggleComponent, toggleComponent.isOn, toggleComponent.gameObject.GetComponent<TextProperty>().Text);
+                this.OutputToggleValueChanged();
             });
 
             // label text
@@ -303,7 +303,7 @@ public class StartupSettings : MonoBehaviour
         this.GenerateSettingsUIControls(CarController.Settings, "CarSettings");
     }
 
-    private void GenerateSettingsUIControls(AbstractSettings settings, string parentName)
+    private void GenerateSettingsUIControls(SettingList settings, string parentName)
     {
         PropertyInfo[] properties = settings.GetType().GetProperties();
         for (int i = 0; i < properties.Length; i++)
@@ -457,9 +457,39 @@ public class StartupSettings : MonoBehaviour
         {
             return;
         }
-        foreach (AbstractSettings settings in config.Settings)
+        foreach (SettingList settings in config.Settings)
         {
             this.FillControls(settings);
+        }
+        this.FillToggles(config.EnabledInputList, this.inputToggles);
+        this.FillToggles(config.EnabledOutputList, this.outputToggles);
+    }
+
+    /// <summary>
+    /// Fills toggles with values from the provided list.
+    /// Toggle will be enabled if it has TextProperty component with text mathching name from the list.
+    /// </summary>
+    /// <param name="enabledToggles">List of enabled values.</param>
+    /// <param name="toggleList">List of toggles.</param>
+    private void FillToggles(List<string> enabledToggles, List<Toggle> toggleList)
+    {
+        // disabling all toggles
+        foreach (Toggle toggle in toggleList)
+        {
+            toggle.isOn = false;
+        }
+
+        // enabling toggles from the list loaded from config file
+        foreach (string enabledToggleName in enabledToggles)
+        {
+            Toggle toggle = (from toggleControl
+                             in toggleList
+                             where toggleControl.gameObject.GetComponent<TextProperty>().Text == enabledToggleName
+                             select toggleControl).First();
+            if (toggle != null)
+            {
+                toggle.isOn = true;
+            }
         }
     }
 
@@ -467,7 +497,7 @@ public class StartupSettings : MonoBehaviour
     /// Fills controls with values loaded from config file.
     /// </summary>
     /// <param name="settings">Settings object.</param>
-    private void FillControls(AbstractSettings settings)
+    private void FillControls(SettingList settings)
     {
         PropertyInfo[] properties = settings.GetType().GetProperties();
         foreach (PropertyInfo property in properties)
@@ -510,7 +540,7 @@ public class StartupSettings : MonoBehaviour
     /// </summary>
     private void SaveConfig()
     {
-        Config config = new Config(new List<AbstractSettings> { GameController.Settings, CarController.Settings });
+        Config config = new Config(new List<SettingList> { GameController.Settings, CarController.Settings }, RegisteredInputs, RegisteredOutputs);
         config.Save();
     }
 
@@ -520,7 +550,7 @@ public class StartupSettings : MonoBehaviour
     [KnownType(typeof(GameController.SimulationSettings))]
     [KnownType(typeof(CarController.CarSettings))]
     [DataContract(Name = "AbstractSettings")]
-    public abstract class AbstractSettings
+    public abstract class SettingList
     {
     }
 
@@ -536,9 +566,13 @@ public class StartupSettings : MonoBehaviour
         /// Initializes a new instance of the <see cref="Config"/> class.
         /// </summary>
         /// <param name="settings">Settings to be saved.</param>
-        public Config(List<AbstractSettings> settings)
+        /// <param name="enabledInputList">List of enabled inputs to be saved.</param>
+        /// <param name="enabledOutputList"> List of enabled outputs to be saved.</param>
+        public Config(List<SettingList> settings, List<string> enabledInputList, List<string> enabledOutputList)
         {
             this.Settings = settings;
+            this.EnabledInputList = enabledInputList;
+            this.EnabledOutputList = enabledOutputList;
         }
 
         /// <summary>
@@ -557,7 +591,7 @@ public class StartupSettings : MonoBehaviour
         /// Settings to be saved.
         /// </summary>
         [DataMember]
-        public List<AbstractSettings> Settings { get; set; }
+        public List<SettingList> Settings { get; set; }
 
         /// <summary>
         /// Load config from config file.

@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR_WIN
+﻿#if UNITY_EDITOR
 using System.IO;
 using System.Text;
 using System.Xml.Linq;

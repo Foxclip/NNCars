@@ -329,7 +329,7 @@ public class CarController : MonoBehaviour
     /// Car settings which will be loaded/saved to config file.
     /// </summary>
     [DataContract(Name = "CarSettings")]
-    public class CarSettings : StartupSettings.AbstractSettings
+    public class CarSettings : StartupSettings.SettingList
     {
         /// <summary>
         /// If by some reason manual keyboard control is needed.

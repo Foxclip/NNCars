@@ -523,7 +523,7 @@ public class GameController : MonoBehaviour
     /// Settings which are saved and loaded from config file.
     /// </summary>
     [DataContract(Name = "SimulationSettings")]
-    public class SimulationSettings : StartupSettings.AbstractSettings
+    public class SimulationSettings : StartupSettings.SettingList
     {
         /// <summary>
         /// Number of hidden layers neural network will have.
@@ -553,19 +553,19 @@ public class GameController : MonoBehaviour
         /// How likely small mutations are.
         /// </summary>
         [DataMember]
-        public float MutationPower { get; set; } = 10;
+        public float MutationPower { get; set; } = 10.0f;
 
         /// <summary>
         /// Maximal amount of mutation in generation.
         /// </summary>
         [DataMember]
-        public float MaxMutation { get; set; } = 1;
+        public float MaxMutation { get; set; } = 1.0f;
 
         /// <summary>
         /// When pressing Space, simulation will speed up.
         /// </summary>
         [DataMember]
-        public float SpeedupTimeScale { get; set; } = 10;
+        public float SpeedupTimeScale { get; set; } = 100.0f;
 
         /// <summary>
         /// Checkpoint is counted as reached when car is within this distance.
