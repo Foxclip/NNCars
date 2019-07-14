@@ -359,13 +359,13 @@ public class CarController : MonoBehaviour
         /// Inputs are fed to neural network with this delay.
         /// </summary>
         [DataMember]
-        public double InputDelay { get; set; } = 0.1;
+        public float InputDelay { get; set; } = 0.1f;
 
         /// <summary>
         /// Outputs are sent to the wheels, but they get there after this delay.
         /// </summary>
         [DataMember]
-        public double OutputDelay { get; set; } = 0.1;
+        public float OutputDelay { get; set; } = 0.1f;
 
         /// <summary>
         /// All values in the input queue are averaged, setting this to true will lead to smoother response of the neural network.

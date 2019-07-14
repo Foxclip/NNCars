@@ -577,43 +577,43 @@ public class GameController : MonoBehaviour
         /// Minimal angle of random rotation in the beginning of each pass.
         /// </summary>
         [DataMember]
-        public double RandomAngleMin { get; set; } = -25.0;
+        public float RandomAngleMin { get; set; } = -25.0f;
 
         /// <summary>
         /// Maximal angle of random rotation in the beginning of each pass.
         /// </summary>
         [DataMember]
-        public double RandomAngleMax { get; set; } = 25.0;
+        public float RandomAngleMax { get; set; } = 25.0f;
 
         /// <summary>
         /// Pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time.
         /// </summary>
         [DataMember]
-        public double TerminationDelay { get; set; } = 1.0;
+        public float TerminationDelay { get; set; } = 1.0f;
 
         /// <summary>
         /// What speed is too low.
         /// </summary>
         [DataMember]
-        public double TerminationSpeed { get; set; } = 0.2;
+        public float TerminationSpeed { get; set; } = 0.2f;
 
         /// <summary>
         /// Weight of the checkpoint bonus.
         /// </summary>
         [DataMember]
-        public double CheckpointBonusWeight { get; set; } = 100.0;
+        public float CheckpointBonusWeight { get; set; } = 100.0f;
 
         /// <summary>
         /// Weight of the distance bonus.
         /// </summary>
         [DataMember]
-        public double DistanceBonusWeight { get; set; } = 10.0;
+        public float DistanceBonusWeight { get; set; } = 10.0f;
 
         /// <summary>
         /// Weight of the speed bonus.
         /// </summary>
         [DataMember]
-        public double SpeedBonusWeight { get; set; } = 1.0;
+        public float SpeedBonusWeight { get; set; } = 1.0f;
 
         /// <summary>
         /// Determines how fitness of the run is calculated.

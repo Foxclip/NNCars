@@ -155,7 +155,6 @@ public class StartupSettings : MonoBehaviour
                     property.SetValue(settings, int.Parse(control.GetComponent<TMP_InputField>().text));
                     break;
                 case nameof(Single):
-                case nameof(Double):
                     property.SetValue(settings, float.Parse(control.GetComponent<TMP_InputField>().text));
                     break;
                 case nameof(Boolean):
@@ -487,7 +486,6 @@ public class StartupSettings : MonoBehaviour
                     control.GetComponent<TMP_InputField>().text = property.GetValue(settings).ToString();
                     break;
                 case nameof(Single):
-                case nameof(Double):
                     control.GetComponent<TMP_InputField>().text = property.GetValue(settings).ToString();
                     break;
                 case nameof(Boolean):
