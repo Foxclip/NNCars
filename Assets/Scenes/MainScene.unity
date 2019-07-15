@@ -7287,6 +7287,36 @@ PrefabInstance:
       propertyPath: axleInfos.Array.data[1].motor
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[0].LeftWheel
+      value: 
+      objectReference: {fileID: 5134176668691688575}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[0].RightWheel
+      value: 
+      objectReference: {fileID: 5134176668691688574}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[0].Steering
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[1].LeftWheel
+      value: 
+      objectReference: {fileID: 5134176668691688573}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[1].RightWheel
+      value: 
+      objectReference: {fileID: 5134176668691688572}
+    - target: {fileID: 5134176667151529529, guid: ed225f366ade76c4ea538e83073a1d8c,
+        type: 3}
+      propertyPath: axleInfos.Array.data[1].Motor
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5134176667151529528, guid: ed225f366ade76c4ea538e83073a1d8c,
         type: 3}
       propertyPath: m_AngularDrag

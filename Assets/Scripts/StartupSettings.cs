@@ -348,7 +348,6 @@ public class StartupSettings : MonoBehaviour
             }
             else
             {
-                Debug.Log(string.Format("{0} == {1}? {2}", properties[i].PropertyType, typeof(int), properties[i].PropertyType == typeof(int)));
                 Debug.Assert(false, string.Format("Unknown property type: {0}", properties[i].PropertyType.Name));
             }
 

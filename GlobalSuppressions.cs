@@ -20,5 +20,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Code Quality", "IDE0051:Remove unused private members", Justification = "Called by Unity", Scope = "member", Target = "~M:GameController.FixedUpdate")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.OrderingRules", "SA1204:Static elements should appear before instance elements", Justification = "Logically, it should be whether it is, near the Serialize() method", Scope = "member", Target = "~M:NeuralNetwork.Deserialize(System.String)~NeuralNetwork")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.OrderingRules", "SA1204:Static elements should appear before instance elements", Justification = "Logically, it should be whether it is, near the SaveToFile() method", Scope = "member", Target = "~M:NeuralNetwork.LoadFromFile(System.String)~NeuralNetwork")]
-[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Useful for unit testting", Scope = "type", Target = "~T:Program")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Useful for unit testing", Scope = "type", Target = "~T:Program")]
 

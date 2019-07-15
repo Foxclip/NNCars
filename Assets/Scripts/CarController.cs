@@ -295,34 +295,27 @@ public class CarController : MonoBehaviour
     [System.Serializable]
     public class AxleInfo
     {
-        [SerializeField]
-        private WheelCollider leftWheel;
-        [SerializeField]
-        private WheelCollider rightWheel;
-        [SerializeField]
-        private bool motor;
-        [SerializeField]
-        private bool steering;
+#pragma warning disable SA1401 // Fields should be private
+        /// <summary>
+        /// Left wheel of an axle.
+        /// </summary>
+        public WheelCollider LeftWheel;
 
         /// <summary>
-        /// Left wheel on the axle.
+        /// Right wheel of an axle.
         /// </summary>
-        public WheelCollider LeftWheel { get => this.leftWheel; set => this.leftWheel = value; }
-
-        /// <summary>
-        /// Right wheel on the axle.
-        /// </summary>
-        public WheelCollider RightWheel { get => this.rightWheel; set => this.rightWheel = value; }
+        public WheelCollider RightWheel;
 
         /// <summary>
         /// Whether axle is motorized.
         /// </summary>
-        public bool Motor { get => this.motor; set => this.motor = value; }
+        public bool Motor;
 
         /// <summary>
-        /// Whether axle can steer.
+        /// Whether axle is steerable.
         /// </summary>
-        public bool Steering { get => this.steering; set => this.steering = value; }
+        public bool Steering;
+#pragma warning restore SA1401 // Fields should be private
     }
 
     /// <summary>
