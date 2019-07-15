@@ -141,7 +141,7 @@ public class StartupSettings : MonoBehaviour
     /// <param name="settings">Settings to be filled.</param>
     private void FillSettings(SettingList settings)
     {
-        PropertyInfo[] properties = settings.GetType().GetProperties();
+        PropertyInfo[] properties = settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         foreach (PropertyInfo property in properties)
         {
             Debug.Log(property.Name);
@@ -305,7 +305,7 @@ public class StartupSettings : MonoBehaviour
 
     private void GenerateSettingsUIControls(SettingList settings, string parentName)
     {
-        PropertyInfo[] properties = settings.GetType().GetProperties();
+        PropertyInfo[] properties = settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         for (int i = 0; i < properties.Length; i++)
         {
             // creating and positioning label text
@@ -316,6 +316,8 @@ public class StartupSettings : MonoBehaviour
             TextMeshProUGUI labelText = labelTextObject.GetComponent<TextMeshProUGUI>();
             labelText.text = properties[i].Name;
             labelText.alignment = TextAlignmentOptions.MidlineRight;
+
+            Debug.Log(string.Format("{0}: {1}", properties[i].Name, properties[i].PropertyType));
 
             // choosing which UI control to create
             GameObject newUIControl = null;
@@ -499,7 +501,7 @@ public class StartupSettings : MonoBehaviour
     /// <param name="settings">Settings object.</param>
     private void FillControls(SettingList settings)
     {
-        PropertyInfo[] properties = settings.GetType().GetProperties();
+        PropertyInfo[] properties = settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         foreach (PropertyInfo property in properties)
         {
             GameObject control = (from uiControl
