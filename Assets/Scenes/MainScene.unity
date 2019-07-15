@@ -770,7 +770,7 @@ GameObject:
   m_Component:
   - component: {fileID: 198816096}
   m_Layer: 0
-  m_Name: Original Track
+  m_Name: OriginalTrack
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5049,7 +5049,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1487416292}
   m_Layer: 0
-  m_Name: Smooth Track
+  m_Name: SmoothTrack
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5515,7 +5515,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1681367095}
   m_Layer: 0
-  m_Name: Long Track
+  m_Name: LongTrack
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

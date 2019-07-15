@@ -43,6 +43,7 @@ public class StartupSettings : MonoBehaviour
 #pragma warning restore IDE0044 // Add readonly modifier
 
     private string networkFile = string.Empty; // current network filename
+    private Dropdown selectTrackDropdown;
 
     /// <summary>
     /// Path to folder neural networks will be saved to.
@@ -58,11 +59,6 @@ public class StartupSettings : MonoBehaviour
     /// Index of selected track.
     /// </summary>
     public static int TrackIndex { get; set; } = 0;
-
-    /// <summary>
-    /// Whether fitness of loaded neural network will be reset.
-    /// </summary>
-    public static bool ResetFitness { get; set; } = false;
 
     /// <summary>
     /// List of inputs in the simulation.
@@ -91,6 +87,45 @@ public class StartupSettings : MonoBehaviour
             this.openFileText.text = Path.GetFileName(this.networkFile);
 
             this.LoadNetwork(this.networkFile);
+
+            // right track will be selected
+            if (SelectedNeuralNetwork.TrackName != null)
+            {
+                int index = this.selectTrackDropdown.options.FindIndex((x) => x.text == SelectedNeuralNetwork.TrackName);
+                if (index != -1)
+                {
+                    this.selectTrackDropdown.value = index;
+                }
+            }
+
+            // update input/ouput toggles to values from neural network
+            foreach (Toggle toggle in this.inputToggles.Concat(this.outputToggles))
+            {
+                toggle.SetValue(false);
+            }
+            foreach (Neuron inputNeuron in SelectedNeuralNetwork.InputNeurons)
+            {
+                Toggle toggle = this.inputToggles.Find((x) => x.GetComponent<TextProperty>().Text == inputNeuron.Name);
+                if (toggle != null)
+                {
+                    toggle.SetValue(true);
+                }
+            }
+            foreach (Neuron outputNeuron in SelectedNeuralNetwork.OutputNeurons)
+            {
+                Toggle toggle = this.outputToggles.Find((x) => x.GetComponent<TextProperty>().Text == outputNeuron.Name);
+                if (toggle != null)
+                {
+                    toggle.SetValue(true);
+                }
+            }
+
+            // toggle values were changed, so registered input/output lists have to be updated too
+            this.UpdateRegisteredInputsOutputs(RegisteredInputs, this.inputToggles);
+            this.UpdateRegisteredInputsOutputs(RegisteredOutputs, this.outputToggles);
+
+            // inputs/outputs in the network might still not match inputs/outputs in the simulation, so neural network has to be updated
+            this.UpdateInputsOutputs();
         }
     }
 
@@ -100,17 +135,9 @@ public class StartupSettings : MonoBehaviour
     public void ClearNetworkFile()
     {
         SelectedNeuralNetwork = null;
+        this.networkFile = string.Empty;
         this.openFileText.text = "<none>";
         this.inputOutputCountText.text = string.Empty;
-    }
-
-    /// <summary>
-    /// Reset Fitness toggle event.
-    /// </summary>
-    /// <param name="value">Value of the toggle.</param>
-    public void ResetFitnessToggle(bool value)
-    {
-        ResetFitness = value;
     }
 
     /// <summary>
@@ -144,7 +171,6 @@ public class StartupSettings : MonoBehaviour
         PropertyInfo[] properties = settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         foreach (PropertyInfo property in properties)
         {
-            Debug.Log(property.Name);
             GameObject control = (from uiControl
                                   in this.uiControls
                                   where uiControl.GetComponent<TextProperty>().Text == property.Name
@@ -184,6 +210,9 @@ public class StartupSettings : MonoBehaviour
         // there is placeholder text in Editor, but it should be hidden at the start
         this.inputOutputCountText.text = string.Empty;
 
+        // getting some UI controls
+        this.selectTrackDropdown = GameObject.Find("Select Track").transform.Find("Select Track Dropdown").GetComponent<Dropdown>();
+
         this.GenerateInputOutputToggles();
         this.GenerateSettingsUIControls();
 
@@ -220,6 +249,7 @@ public class StartupSettings : MonoBehaviour
 
         // because list of inputs changed, neural network has to be updated accordingly
         this.LoadNetwork(this.networkFile);
+        this.UpdateInputsOutputs();
     }
 
     /// <summary>
@@ -231,6 +261,7 @@ public class StartupSettings : MonoBehaviour
 
         // because list of outputs changed, neural network has to be updated accordingly
         this.LoadNetwork(this.networkFile);
+        this.UpdateInputsOutputs();
     }
 
     /// <summary>
@@ -317,8 +348,6 @@ public class StartupSettings : MonoBehaviour
             labelText.text = properties[i].Name;
             labelText.alignment = TextAlignmentOptions.MidlineRight;
 
-            Debug.Log(string.Format("{0}: {1}", properties[i].Name, properties[i].PropertyType));
-
             // choosing which UI control to create
             GameObject newUIControl = null;
             if (properties[i].PropertyType == typeof(int))
@@ -369,6 +398,11 @@ public class StartupSettings : MonoBehaviour
     /// </summary>
     private void UpdateInputsOutputs()
     {
+        if (SelectedNeuralNetwork == null)
+        {
+            return;
+        }
+
         // counters will be shown to user
         int inputsAdded = 0;
         int inputsRemoved = 0;
@@ -439,9 +473,6 @@ public class StartupSettings : MonoBehaviour
         }
 
         SelectedNeuralNetwork = NeuralNetwork.LoadFromFile(filename);
-
-        // inputs/outputs in the network might not match inputs/outputs in the simulation, so neural network has to be updated
-        this.UpdateInputsOutputs();
     }
 
     /// <summary>
@@ -464,6 +495,8 @@ public class StartupSettings : MonoBehaviour
         }
         this.FillToggles(config.EnabledInputList, this.inputToggles);
         this.FillToggles(config.EnabledOutputList, this.outputToggles);
+        this.UpdateRegisteredInputsOutputs(RegisteredInputs, this.inputToggles);
+        this.UpdateRegisteredInputsOutputs(RegisteredOutputs, this.outputToggles);
     }
 
     /// <summary>
@@ -477,7 +510,7 @@ public class StartupSettings : MonoBehaviour
         // disabling all toggles
         foreach (Toggle toggle in toggleList)
         {
-            toggle.isOn = false;
+            toggle.SetValue(false);
         }
 
         // enabling toggles from the list loaded from config file
@@ -489,7 +522,7 @@ public class StartupSettings : MonoBehaviour
                              select toggleControl).First();
             if (toggle != null)
             {
-                toggle.isOn = true;
+                toggle.SetValue(true);
             }
         }
     }

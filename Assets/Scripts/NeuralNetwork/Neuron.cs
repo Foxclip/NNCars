@@ -16,19 +16,6 @@ using System.Xml;
 [DataContract(Name = "Neuron", IsReference = true)]
 public class Neuron
 {
-    [DataMember]
-    private int id = 0;
-    [DataMember]
-    private string name;
-    [DataMember]
-    private NeuronType type;
-    [DataMember]
-    private List<InputLink> inputLinks = new List<InputLink>();
-    [DataMember]
-    private List<Neuron> outputLinks = new List<Neuron>();
-    [DataMember]
-    private double bias;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="Neuron"/> class.
     /// Parameterless contructor, needed for loading from file.
@@ -65,32 +52,38 @@ public class Neuron
     /// <summary>
     /// Id of the neuron.
     /// </summary>
-    public int Id { get => this.id; set => this.id = value; }
+    [DataMember]
+    public int Id { get; set; } = 0;
 
     /// <summary>
     /// Name of the neuron.
     /// </summary>
-    public string Name { get => this.name; set => this.name = value; }
+    [DataMember]
+    public string Name { get; set; }
 
     /// <summary>
     /// Type of the neuron.
     /// </summary>
-    public NeuronType Type { get => this.type; set => this.type = value; }
+    [DataMember]
+    public NeuronType Type { get; set; }
 
     /// <summary>
     /// Input links of the neuron. They contain link to neuron and corresponding weight.
     /// </summary>
-    public List<InputLink> InputLinks { get => this.inputLinks; set => this.inputLinks = value; }
+    [DataMember]
+    public List<InputLink> InputLinks { get; set; } = new List<InputLink>();
 
     /// <summary>
     /// Output links of the neuron.
     /// </summary>
-    public List<Neuron> OutputLinks { get => this.outputLinks; set => this.outputLinks = value; }
+    [DataMember]
+    public List<Neuron> OutputLinks { get; set; } = new List<Neuron>();
 
     /// <summary>
     /// Bias of the neuron.
     /// </summary>
-    public double Bias { get => this.bias; set => this.bias = value; }
+    [DataMember]
+    public double Bias { get; set; }
 
     /// <summary>
     /// Calculates value of the neuron.

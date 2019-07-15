@@ -42,10 +42,6 @@ public class NeuralNetwork
     private readonly List<Neuron> allNeurons = new List<Neuron>();
     [DataMember]
     private int id = 0;
-    [DataMember]
-    private double fitness = 0;
-    [DataMember]
-    private int breakthroughCount = 0;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NeuralNetwork"/> class.
@@ -198,12 +194,20 @@ public class NeuralNetwork
     /// <summary>
     /// Fitness asigned by genetic algorithm. Is saved to file.
     /// </summary>
-    public double Fitness { get => this.fitness; set => this.fitness = value; }
+    [DataMember]
+    public double Fitness { get; set; } = 0;
 
     /// <summary>
     /// Measure of how long netwrok has been training. Is saved to file.
     /// </summary>
-    public int BreakthroughCount { get => this.breakthroughCount; set => this.breakthroughCount = value; }
+    [DataMember]
+    public int BreakthroughCount { get; set; } = 0;
+
+    /// <summary>
+    /// Name of the track network was training on.
+    /// </summary>
+    [DataMember]
+    public string TrackName { get; set; } = null;
 
     /// <summary>
     /// Adds new input neuron to the neural network (and, optionally, connect it to the next layer).
@@ -497,6 +501,7 @@ public class NeuralNetwork
         writer.WriteLine("id " + this.id);
         writer.WriteLine("fitness " + this.Fitness);
         writer.WriteLine("breakthroughCount " + this.BreakthroughCount);
+        writer.WriteLine("trackName " + this.TrackName);
         writer.WriteLine();
 
         // saving neurons
@@ -536,10 +541,11 @@ public class NeuralNetwork
             id = int.Parse(reader.ReadLine().Split(' ')[1]),
             Fitness = double.Parse(reader.ReadLine().Split(' ')[1]),
             BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]),
+            TrackName = reader.ReadLine().Split(' ')[1],
         };
 
         // these properties will be skipped on the second pass, so we need to know amount of them
-        const int networkParameterCount = 3;
+        const int networkParameterCount = 4;
 
         // skipping empty line
         reader.ReadLine();

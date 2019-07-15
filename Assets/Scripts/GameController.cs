@@ -134,7 +134,10 @@ public class GameController : MonoBehaviour
         {
             this.bestNetwork = StartupSettings.SelectedNeuralNetwork;
             this.breakthroughCount = this.bestNetwork.BreakthroughCount;
-            if (!StartupSettings.ResetFitness)
+
+            // if training is continued on the same track, there is no need to break all fitness records again
+            // if it is different track, we have to start from zero
+            if (this.bestNetwork.TrackName == this.track.name)
             {
                 this.bestRunFitness = this.bestNetwork.Fitness;
             }
@@ -143,6 +146,7 @@ public class GameController : MonoBehaviour
         {
             this.bestNetwork = new NeuralNetwork(StartupSettings.RegisteredInputs, StartupSettings.RegisteredOutputs, Settings.LayerCount, Settings.NeuronsInLayer);
         }
+        this.bestNetwork.TrackName = this.track.name;
 
         // preparing simulation
         this.PreGeneration();
