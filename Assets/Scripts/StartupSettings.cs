@@ -549,7 +549,7 @@ public class StartupSettings : MonoBehaviour
     /// </summary>
     [KnownType(typeof(GameController.SimulationSettings))]
     [KnownType(typeof(CarController.CarSettings))]
-    [DataContract(Name = "AbstractSettings")]
+    [DataContract(Name = "SettingList")]
     public abstract class SettingList
     {
     }
