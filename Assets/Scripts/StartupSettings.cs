@@ -390,7 +390,7 @@ public class StartupSettings : MonoBehaviour
         }
 
         // deleting unneeded inputs
-        foreach (Neuron inputNeuron in SelectedNeuralNetwork.GetInputNeurons())
+        foreach (Neuron inputNeuron in SelectedNeuralNetwork.InputNeurons)
         {
             if (RegisteredInputs.FindAll((x) => x == inputNeuron.Name).Count == 0)
             {
@@ -414,7 +414,7 @@ public class StartupSettings : MonoBehaviour
         }
 
         // deleting unneeded outputs
-        foreach (Neuron outputNeuron in SelectedNeuralNetwork.GetOutputNeurons())
+        foreach (Neuron outputNeuron in SelectedNeuralNetwork.OutputNeurons)
         {
             if (RegisteredOutputs.FindAll((x) => x == outputNeuron.Name).Count == 0)
             {

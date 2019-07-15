@@ -37,8 +37,9 @@ public enum NeuronType
 public class NeuralNetwork
 {
     private static int networkIdCounter = 0;
-    private readonly List<Neuron> allNeurons = new List<Neuron>();
 
+    [DataMember]
+    private readonly List<Neuron> allNeurons = new List<Neuron>();
     [DataMember]
     private int id = 0;
     [DataMember]
@@ -139,6 +140,60 @@ public class NeuralNetwork
     /// Neurons sorted in layers.
     /// </summary>
     public List<List<Neuron>> Layers { get; set; } = new List<List<Neuron>>();
+
+    /// <summary>
+    /// List of input neurons.
+    /// </summary>
+    public List<Neuron> InputNeurons
+    {
+        get
+        {
+            if (this.Layers.Count > 0)
+            {
+                return this.Layers[0];
+            }
+            else
+            {
+                return new List<Neuron>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// List of hidden neurons.
+    /// </summary>
+    public List<Neuron> HiddenNeurons
+    {
+        get
+        {
+            if (this.Layers.Count > 2)
+            {
+                return this.Layers.GetRange(1, this.Layers.Count - 2).SelectMany(i => i).ToList();
+            }
+            else
+            {
+                return new List<Neuron>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// List of output neurons.
+    /// </summary>
+    public List<Neuron> OutputNeurons
+    {
+        get
+        {
+            if (this.Layers.Count > 0)
+            {
+                return this.Layers.Last();
+            }
+            else
+            {
+                return new List<Neuron>();
+            }
+        }
+    }
 
     /// <summary>
     /// Fitness asigned by genetic algorithm. Is saved to file.
@@ -287,7 +342,7 @@ public class NeuralNetwork
 
         // collecting values of output neurons
         Dictionary<string, double> output = new Dictionary<string, double>();
-        foreach (Neuron neuron in this.GetOutputNeurons())
+        foreach (Neuron neuron in this.OutputNeurons)
         {
             output.Add(neuron.Name, neuron.Value);
         }
@@ -301,11 +356,11 @@ public class NeuralNetwork
     /// <param name="maxMutation">Maximum amount of mutation.</param>
     public void Mutate(double power, double maxMutation)
     {
-        foreach (Neuron neuron in this.GetHiddenNeurons())
+        foreach (Neuron neuron in this.HiddenNeurons)
         {
             neuron.Mutate(power, maxMutation);
         }
-        foreach (Neuron neuron in this.GetOutputNeurons())
+        foreach (Neuron neuron in this.OutputNeurons)
         {
             neuron.Mutate(power, maxMutation);
         }
@@ -352,57 +407,6 @@ public class NeuralNetwork
         else
         {
             return matchingNeurons[0];
-        }
-    }
-
-    /// <summary>
-    /// Returns list of input neurons.
-    /// Returns empty list if there are no input neurons.
-    /// </summary>
-    /// <returns>List of input neurons.</returns>
-    public List<Neuron> GetInputNeurons()
-    {
-        if (this.Layers.Count > 0)
-        {
-            return this.Layers[0];
-        }
-        else
-        {
-            return new List<Neuron>();
-        }
-    }
-
-    /// <summary>
-    /// Returns list of hidden neurons.
-    /// Returns empty list if there are no hidden neurons.
-    /// </summary>
-    /// <returns>List of hidden neurons.</returns>
-    public List<Neuron> GetHiddenNeurons()
-    {
-        if (this.Layers.Count > 2)
-        {
-            return this.Layers.GetRange(1, this.Layers.Count - 2).SelectMany(i => i).ToList();
-        }
-        else
-        {
-            return new List<Neuron>();
-        }
-    }
-
-    /// <summary>
-    /// Returns list of output neurons.
-    /// Returns empty list if there are no output neurons.
-    /// </summary>
-    /// <returns>List of output neurons.</returns>
-    public List<Neuron> GetOutputNeurons()
-    {
-        if (this.Layers.Count > 0)
-        {
-            return this.Layers.Last();
-        }
-        else
-        {
-            return new List<Neuron>();
         }
     }
 
@@ -458,7 +462,9 @@ public class NeuralNetwork
     /// </summary>
     /// <param name="fileName">Name of the file.</param>
     /// <returns>Loaded neural network.</returns>
+#pragma warning disable SA1204 // Static elements should appear before instance elements
     public static NeuralNetwork Deserialize(string fileName)
+#pragma warning restore SA1204 // Static elements should appear before instance elements
     {
         NeuralNetwork deserializedNetwork;
         using (FileStream fs = new FileStream(fileName, FileMode.Open))
@@ -519,7 +525,9 @@ public class NeuralNetwork
     /// </summary>
     /// /// <param name="filename">Name of the file.</param>
     /// <returns>Neural network loaded from the file.</returns>
+#pragma warning disable SA1204 // Static elements should appear before instance elements
     public static NeuralNetwork LoadFromFile(string filename)
+#pragma warning restore SA1204 // Static elements should appear before instance elements
     {
         StreamReader reader = new StreamReader(filename);
         NeuralNetwork loadedNetwork = new NeuralNetwork
@@ -719,9 +727,9 @@ public class NeuralNetwork
     /// <param name="inputs">Dictionary with names of inputs and their values.</param>
     private void SetInputs(Dictionary<string, double> inputs)
     {
-        if (inputs.Count != this.GetInputNeurons().Count)
+        if (inputs.Count != this.InputNeurons.Count)
         {
-            throw new NeuralNetworkException(string.Format("Input count mismatch: {0} inputs provided while network has {1}", inputs.Count, this.GetInputNeurons().Count));
+            throw new NeuralNetworkException(string.Format("Input count mismatch: {0} inputs provided while network has {1}", inputs.Count, this.InputNeurons.Count));
         }
 
         foreach (KeyValuePair<string, double> input in inputs)
@@ -762,7 +770,9 @@ public class NeuralNetwork
 /// <summary>
 /// Some testing.
 /// </summary>
+#pragma warning disable SA1402 // File may only contain a single type
 internal class Program
+#pragma warning restore SA1402 // File may only contain a single type
 {
     private static void Main()
     {
@@ -773,9 +783,9 @@ internal class Program
         Console.WriteLine();
 
         NeuralNetwork network1 = new NeuralNetwork(inputList, outputList, 2, 2);
-        network1.GetHiddenNeurons()[0].InputLinks[0].Weight = 1;
-        network1.GetHiddenNeurons()[2].InputLinks[0].Weight = 1;
-        network1.GetOutputNeurons()[0].InputLinks[0].Weight = 1;
+        network1.HiddenNeurons[0].InputLinks[0].Weight = 1;
+        network1.HiddenNeurons[2].InputLinks[0].Weight = 1;
+        network1.OutputNeurons[0].InputLinks[0].Weight = 1;
         network1.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network1);
         Console.WriteLine();
@@ -796,18 +806,18 @@ internal class Program
         Console.WriteLine(network3);
         Console.WriteLine();
 
-        network3.GetHiddenNeurons()[0].InputLinks[0].Weight = -0.083920758234613382;
-        network3.GetHiddenNeurons()[0].InputLinks[1].Weight = -0.10348547168394251;
-        network3.GetHiddenNeurons()[1].InputLinks[0].Weight = 0.9864023685598281;
-        network3.GetHiddenNeurons()[1].InputLinks[1].Weight = 0.15295621398799475;
-        network3.GetHiddenNeurons()[2].InputLinks[0].Weight = -0.070737256110288152;
-        network3.GetHiddenNeurons()[2].InputLinks[1].Weight = -1.0365333983959844;
-        network3.GetHiddenNeurons()[3].InputLinks[0].Weight = 0.46109638325388069;
-        network3.GetHiddenNeurons()[3].InputLinks[1].Weight = -0.25149451732354522;
-        network3.GetOutputNeurons()[0].InputLinks[0].Weight = 0.50648030282771972;
-        network3.GetOutputNeurons()[0].InputLinks[1].Weight = 0.51670017869582552;
-        network3.GetOutputNeurons()[1].InputLinks[0].Weight = 0.23281424843657786;
-        network3.GetOutputNeurons()[1].InputLinks[1].Weight = -0.60550942224139681;
+        network3.HiddenNeurons[0].InputLinks[0].Weight = -0.083920758234613382;
+        network3.HiddenNeurons[0].InputLinks[1].Weight = -0.10348547168394251;
+        network3.HiddenNeurons[1].InputLinks[0].Weight = 0.9864023685598281;
+        network3.HiddenNeurons[1].InputLinks[1].Weight = 0.15295621398799475;
+        network3.HiddenNeurons[2].InputLinks[0].Weight = -0.070737256110288152;
+        network3.HiddenNeurons[2].InputLinks[1].Weight = -1.0365333983959844;
+        network3.HiddenNeurons[3].InputLinks[0].Weight = 0.46109638325388069;
+        network3.HiddenNeurons[3].InputLinks[1].Weight = -0.25149451732354522;
+        network3.OutputNeurons[0].InputLinks[0].Weight = 0.50648030282771972;
+        network3.OutputNeurons[0].InputLinks[1].Weight = 0.51670017869582552;
+        network3.OutputNeurons[1].InputLinks[0].Weight = 0.23281424843657786;
+        network3.OutputNeurons[1].InputLinks[1].Weight = -0.60550942224139681;
         network3.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network3);
         Console.WriteLine();
@@ -836,8 +846,8 @@ internal class Program
         Console.WriteLine();
 
         network5.AddInputNeuron("newInput", true);
-        network5.GetHiddenNeurons()[0].SetWeight("newInput", 0.333);
-        network5.GetHiddenNeurons()[1].SetWeight("newInput", -0.333);
+        network5.HiddenNeurons[0].SetWeight("newInput", 0.333);
+        network5.HiddenNeurons[1].SetWeight("newInput", -0.333);
         network5.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 }, { "newInput", 5.5 } });
         Console.WriteLine(network5);
         Console.WriteLine();
