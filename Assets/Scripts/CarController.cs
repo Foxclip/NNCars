@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using UnityEngine;
+using System.Linq;
 
 /// <summary>
 /// For controlling the car.
@@ -44,6 +45,7 @@ public class CarController : MonoBehaviour
         "RayLeftFront22", "RayRightFront22",
         "RayLeft68", "RayRight68",
         "Speed", "FrontSlip", "RearSlip",
+        "RayForward_D1", "RayLeftFront45_D1", "RayLeft90_D1", "RayRight90_D1", "RayLeftFront22_D1", "RayRightFront22_D1", "RayLeft68_D1", "RayRight68_D1", "Speed_D1",
     };
 
     /// <summary>
@@ -140,19 +142,18 @@ public class CarController : MonoBehaviour
             // name of neural network input, as opposed to name of the object in the scene
             string rayOriginName = rayOrigin.name.Replace(" ", string.Empty);
 
-            if (!StartupSettings.RegisteredInputs.Contains(rayOriginName))
+            // adding ray length
+            if (StartupSettings.RegisteredInputs.Contains(rayOriginName))
             {
-                continue;
-            }
-
-            if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit))
-            {
-                nnInputs.Add(rayOriginName, hit.distance);
-                Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
-            }
-            else
-            {
-                nnInputs.Add(rayOriginName, -1.0);
+                if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit))
+                {
+                    nnInputs.Add(rayOriginName, hit.distance);
+                    Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
+                }
+                else
+                {
+                    nnInputs.Add(rayOriginName, -1.0);
+                }
             }
         }
 
@@ -189,13 +190,35 @@ public class CarController : MonoBehaviour
         // inputs which come now will be put to the back of the input queue
         this.inputQueue.Enqueue(nnInputs);
 
+        // adding derivatives
+        Dictionary<string, double>[] inputs = this.inputQueue.ToArray();
+        int inputsSize = inputs.Count();
+        if (inputsSize >= 2)
+        {
+            foreach (Transform rayOrigin in this.rayOrigins)
+            {
+                string rayOriginName = rayOrigin.name.Replace(" ", string.Empty);
+                string inputName = rayOriginName + "_D1";
+                if (StartupSettings.RegisteredInputs.Contains(inputName))
+                {
+                    // calculating list of derivatives for the given input
+                    double[] derivatives = new double[inputsSize - 1];
+                    for (int i = 0; i < inputsSize - 1; i++)
+                    {
+                        double value1 = inputs[i][rayOriginName];
+                        double value2 = inputs[i + 1][rayOriginName];
+                        derivatives[i] = (value2 - value1) * FPS;
+                    }
+                    nnInputs.Add(inputName, derivatives.Average());
+                    Debug.Log(this.rb.velocity.magnitude + " " + derivatives.Average());
+                }
+            }
+        }
+
         // and this is the dictionary for the inputs which will be fed to the neural network now
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();
         if (Settings.AveragedInput)
         {
-            // converting queue to array
-            Dictionary<string, double>[] inputs = this.inputQueue.ToArray();
-
             // dictionary for results
             foreach (string inputName in StartupSettings.RegisteredInputs)
             {

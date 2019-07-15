@@ -190,28 +190,28 @@ public class GameController : MonoBehaviour
 
     private bool CheckDeathConditions()
     {
-        if (this.fitnessDeathTimer > Settings.TerminationDelay || this.speedDeathTimer > Settings.TerminationDelay || this.carObject.transform.position.y < 0.0f || this.CollisionDetected || this.NextCheckpoint >= this.checkpoints.Count)
+        if (this.fitnessDeathTimer > Settings.TerminationDelay)
         {
-            if (this.fitnessDeathTimer > Settings.TerminationDelay)
-            {
-                Debug.Log("FITNESS Max: " + this.bestFitnessInThisPass + " Current: " + this.PassFitness);
-            }
-            if (this.speedDeathTimer > Settings.TerminationDelay)
-            {
-                Debug.Log("SPEED");
-            }
-            if (this.carObject.transform.position.y < 0.0f)
-            {
-                Debug.Log("FALL");
-            }
-            if (this.CollisionDetected)
-            {
-                Debug.Log("COLLISION");
-            }
-            if (this.NextCheckpoint >= this.checkpoints.Count)
-            {
-                Debug.Log("FINISH");
-            }
+            this.NextPass();
+            return true;
+        }
+        if (this.speedDeathTimer > Settings.TerminationDelay)
+        {
+            this.NextPass();
+            return true;
+        }
+        if (this.carObject.transform.position.y < 0.0f)
+        {
+            this.NextPass();
+            return true;
+        }
+        if (this.CollisionDetected)
+        {
+            this.NextPass();
+            return true;
+        }
+        if (this.NextCheckpoint >= this.checkpoints.Count)
+        {
             this.NextPass();
             return true;
         }
@@ -424,7 +424,6 @@ public class GameController : MonoBehaviour
             speedBonus = 0.0;
             timeBonus = 1.0 / (this.timer + 1.0);
         }
-        double savedFitness = this.PassFitness;
         this.PassFitness += speedBonus;
         this.PassFitness += timeBonus;
 
@@ -436,20 +435,6 @@ public class GameController : MonoBehaviour
             NextCheckpoint = this.NextCheckpoint,
         };
         this.passes.Add(pass);
-
-        // distance bonus (not added to passFitness, used only for debug)
-        double distanceBonus = 0.0;
-        if (this.NextCheckpoint < this.checkpoints.Count)
-        {
-            float distanceToNextCheckpoint = Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position);
-            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * 10.0;
-        }
-
-        // checkpoint bonus (not added to pass fitness, used only for debug)
-        double checkpointBonus = this.NextCheckpoint * 100.0;
-
-        Debug.Log("Pass fitness: " + this.PassFitness + " Nsb: " + savedFitness + " Time: " + this.timer + " Distance: " + this.distance + " Avg sp: " + (this.distance / this.timer));
-        Debug.Log("Chk: " + checkpointBonus + " Dst: " + distanceBonus + " Spd: " + speedBonus + " T: " + timeBonus);
 
         // if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
         if (Settings.RunAcceptMode == RunAcceptModes.All && this.PassFitness < this.bestRunFitness)
@@ -480,8 +465,6 @@ public class GameController : MonoBehaviour
 
         // randomized rotation
         this.carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(this.passIndex, 0, Settings.PassCount - 1, Settings.RandomAngleMin, Settings.RandomAngleMax));
-
-        Debug.Log("Generation " + this.generationIndex + " Car: " + this.runIndex + " Pass: " + this.passIndex + " Max: " + this.bestRunFitness + " Gen: " + this.breakthroughGen + " Car: " + this.breakthroughRun);
     }
 
     // proceed to the next run

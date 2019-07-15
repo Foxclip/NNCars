@@ -207,6 +207,13 @@ public class StartupSettings : MonoBehaviour
         customCulture.NumberFormat.NumberDecimalSeparator = ".";
         System.Threading.Thread.CurrentThread.CurrentCulture = customCulture;
 
+        // turning off debug logging in build
+#if UNITY_EDITOR
+        Debug.unityLogger.logEnabled = true;
+#else
+        Debug.unityLogger.logEnabled = false;
+#endif
+
         // there is placeholder text in Editor, but it should be hidden at the start
         this.inputOutputCountText.text = string.Empty;
 
