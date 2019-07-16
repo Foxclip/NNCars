@@ -1,8 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using UnityEngine;
-using System.Linq;
 
 /// <summary>
 /// For controlling the car.
@@ -45,7 +45,6 @@ public class CarController : MonoBehaviour
         "RayLeftFront22", "RayRightFront22",
         "RayLeft68", "RayRight68",
         "Speed", "FrontSlip", "RearSlip",
-        "RayForward_D^1", "RayLeftFront45_D^1", "RayRightFront45_D^1", "RayLeft90_D^1", "RayRight90_D^1", "RayLeftFront22_D^1", "RayRightFront22_D^1", "RayLeft68_D^1", "RayRight68_D^1", "Speed_D^1",
     };
 
     /// <summary>
@@ -191,27 +190,25 @@ public class CarController : MonoBehaviour
         this.inputQueue.Enqueue(nnInputs);
 
         // adding derivatives
-        Dictionary<string, double>[] inputs = this.inputQueue.ToArray();
-        int inputsSize = inputs.Count();
-        if (inputsSize >= 2)
+        Dictionary<string, double>[] inputQueueArray = this.inputQueue.ToArray();
+        IEnumerable derivativeNames = from inputName
+                                      in StartupSettings.RegisteredInputs
+                                      where inputName.EndsWith("_D^1")
+                                      select inputName;
+        if (inputQueueArray.Length >= 2)
         {
-            foreach (Transform rayOrigin in this.rayOrigins)
+            foreach (string derivativeName in derivativeNames)
             {
-                string rayOriginName = rayOrigin.name.Replace(" ", string.Empty);
-                string inputName = rayOriginName + "_D^1";
-                if (StartupSettings.RegisteredInputs.Contains(inputName))
+                // calculating list of derivatives for the given input
+                string inputName = StartupSettings.RegisteredInputs.Find((x) => x.StartsWith(derivativeName) || !x.EndsWith("_D^1"));
+                double[] derivatives = new double[inputQueueArray.Length - 1];
+                for (int i = 0; i < inputQueueArray.Length - 1; i++)
                 {
-                    // calculating list of derivatives for the given input
-                    double[] derivatives = new double[inputsSize - 1];
-                    for (int i = 0; i < inputsSize - 1; i++)
-                    {
-                        double value1 = inputs[i][rayOriginName];
-                        double value2 = inputs[i + 1][rayOriginName];
-                        derivatives[i] = (value2 - value1) * FPS;
-                    }
-                    nnInputs.Add(inputName, derivatives.Average());
-                    Debug.Log(this.rb.velocity.magnitude + " " + derivatives.Average());
+                    double value1 = inputQueueArray[i][inputName];
+                    double value2 = inputQueueArray[i + 1][inputName];
+                    derivatives[i] = (value2 - value1) * FPS;
                 }
+                nnInputs.Add(derivativeName, derivatives.Average());
             }
         }
 
@@ -226,7 +223,7 @@ public class CarController : MonoBehaviour
             }
 
             // summing input values
-            foreach (Dictionary<string, double> input in inputs)
+            foreach (Dictionary<string, double> input in inputQueueArray)
             {
                 foreach (string inputName in StartupSettings.RegisteredInputs)
                 {
@@ -237,7 +234,7 @@ public class CarController : MonoBehaviour
             // dividing by length to find average
             foreach (string inputName in StartupSettings.RegisteredInputs)
             {
-                currentInputs[inputName] /= inputs.Length;
+                currentInputs[inputName] /= inputQueueArray.Length;
             }
             this.inputQueue.Dequeue();
         }

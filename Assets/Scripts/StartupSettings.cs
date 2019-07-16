@@ -276,8 +276,15 @@ public class StartupSettings : MonoBehaviour
     /// </summary>
     private void GenerateInputOutputToggles()
     {
+        // adding derivatives to the list of inputs
+        List<string> inputList = new List<string>(CarController.PossibleInputs);
+        foreach (string inputName in CarController.PossibleInputs)
+        {
+            inputList.Add(inputName + "_D^1");
+        }
+
         // inputs
-        for (int i = 0; i < CarController.PossibleInputs.Count; i++)
+        for (int i = 0; i < inputList.Count; i++)
         {
             // instantiating toggle prefab
             GameObject newToggle = Instantiate(this.togglePrefab);
@@ -285,7 +292,7 @@ public class StartupSettings : MonoBehaviour
 
             // related input name will be tied to it
             TextProperty inputName = newToggle.GetComponent<TextProperty>();
-            inputName.Text = CarController.PossibleInputs[i];
+            inputName.Text = inputList[i];
 
             // setting position on canvas
             RectTransform rectTransformComponent = newToggle.GetComponent<RectTransform>();
@@ -300,7 +307,7 @@ public class StartupSettings : MonoBehaviour
 
             // label text
             TextMeshProUGUI labelText = newToggle.transform.Find("Label").GetComponent<TextMeshProUGUI>();
-            labelText.text = CarController.PossibleInputs[i];
+            labelText.text = inputList[i];
 
             this.inputToggles.Add(toggleComponent);
         }
