@@ -45,7 +45,7 @@ public class CarController : MonoBehaviour
         "RayLeftFront22", "RayRightFront22",
         "RayLeft68", "RayRight68",
         "Speed", "FrontSlip", "RearSlip",
-        "RayForward_D1", "RayLeftFront45_D1", "RayLeft90_D1", "RayRight90_D1", "RayLeftFront22_D1", "RayRightFront22_D1", "RayLeft68_D1", "RayRight68_D1", "Speed_D1",
+        "RayForward_D^1", "RayLeftFront45_D^1", "RayRightFront45_D^1", "RayLeft90_D^1", "RayRight90_D^1", "RayLeftFront22_D^1", "RayRightFront22_D^1", "RayLeft68_D^1", "RayRight68_D^1", "Speed_D^1",
     };
 
     /// <summary>
@@ -198,7 +198,7 @@ public class CarController : MonoBehaviour
             foreach (Transform rayOrigin in this.rayOrigins)
             {
                 string rayOriginName = rayOrigin.name.Replace(" ", string.Empty);
-                string inputName = rayOriginName + "_D1";
+                string inputName = rayOriginName + "_D^1";
                 if (StartupSettings.RegisteredInputs.Contains(inputName))
                 {
                     // calculating list of derivatives for the given input
