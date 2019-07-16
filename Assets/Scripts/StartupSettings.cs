@@ -218,7 +218,7 @@ public class StartupSettings : MonoBehaviour
         this.inputOutputCountText.text = string.Empty;
 
         // getting some UI controls
-        this.selectTrackDropdown = GameObject.Find("Select Track").transform.Find("Select Track Dropdown").GetComponent<Dropdown>();
+        this.selectTrackDropdown = this.transform.Find("Select Track").transform.Find("Select Track Dropdown").GetComponent<Dropdown>();
 
         this.GenerateInputOutputToggles();
         this.GenerateSettingsUIControls();
@@ -281,6 +281,10 @@ public class StartupSettings : MonoBehaviour
         foreach (string inputName in CarController.PossibleInputs)
         {
             inputList.Add(inputName + "_D^1");
+        }
+        foreach (string inputName in CarController.PossibleInputs)
+        {
+            inputList.Add(inputName + "_D^2");
         }
 
         // inputs
