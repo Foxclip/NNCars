@@ -20,13 +20,13 @@ public class CarController : MonoBehaviour
     private GameObject gameControllerObject;                // GameController object
 #pragma warning restore IDE0044 // Add readonly modifier
 
-    private double inputSteps;                              // how long input queue is
-    private double outputSteps;                             // how long ouput queue is
+    private int inputSteps;                              // how long input queue is
+    private int outputSteps;                             // how long ouput queue is
 
     private GameController gameController;                  // GameController script
     private Rigidbody rb;                                   // Rigidbody of the car
-    private Queue<Dictionary<string, double>> inputQueue;   // all inputs are going through this queue
-    private Queue<Dictionary<string, double>> outputQueue;  // all outputs are going through this queue
+    private Dictionary<string, Queue<double>> inputQueues;   // all inputs are going through this queue
+    private Dictionary<string, Queue<double>> outputQueue;  // all outputs are going through this queue
 
     /// <summary>
     /// Car settings.
@@ -70,27 +70,25 @@ public class CarController : MonoBehaviour
     public void ResetQueues()
     {
         // input queue
-        this.inputQueue = new Queue<Dictionary<string, double>>();
-        for (int list_i = 0; list_i < this.inputSteps; list_i++)
+        this.inputQueues = new Dictionary<string, Queue<double>>();
+        foreach (string inputName in StartupSettings.RegisteredInputs)
         {
-            Dictionary<string, double> emptyInput = new Dictionary<string, double>();
-            foreach (string inputName in StartupSettings.RegisteredInputs)
+            this.inputQueues.Add(inputName, new Queue<double>());
+            for (int list_i = 0; list_i < this.inputSteps; list_i++)
             {
-                emptyInput.Add(inputName, 0.0);
+                this.inputQueues[inputName].Enqueue(0.0);
             }
-            this.inputQueue.Enqueue(emptyInput);
         }
 
         // output queue
-        this.outputQueue = new Queue<Dictionary<string, double>>();
-        for (int list_i = 0; list_i < this.outputSteps; list_i++)
+        this.outputQueue = new Dictionary<string, Queue<double>>();
+        foreach (string outputName in StartupSettings.RegisteredOutputs)
         {
-            Dictionary<string, double> emptyOutput = new Dictionary<string, double>();
-            foreach (string outputName in StartupSettings.RegisteredOutputs)
+            this.outputQueue.Add(outputName, new Queue<double>());
+            for (int list_i = 0; list_i < this.outputSteps; list_i++)
             {
-                emptyOutput.Add(outputName, 0.0);
+                this.outputQueue[outputName].Enqueue(0.0);
             }
-            this.outputQueue.Enqueue(emptyOutput);
         }
     }
 
@@ -127,6 +125,42 @@ public class CarController : MonoBehaviour
         this.ResetQueues();
     }
 
+    private List<double> GetColumnFromDict(List<Dictionary<string, double>> lst, string keyName)
+    {
+        List<double> result = new List<double>();
+        foreach (Dictionary<string, double> dict in lst)
+        {
+            result.Add(dict[keyName]);
+        }
+        return result;
+    }
+
+    private void AddToQueue(Dictionary<string, Queue<double>> queue, Dictionary<string, double> dict)
+    {
+        foreach (string name in dict.Keys)
+        {
+            queue[name].Enqueue(dict[name]);
+        }
+    }
+
+    private Dictionary<string, List<double>> GetDerivativeList<T>(Dictionary<string, T> from, int count)
+    {
+        Dictionary<string, List<double>> result = new Dictionary<string, List<double>>();
+        foreach (string name in from.Keys)
+        {
+            List<double> derivList = new List<double>();
+            for (int i = 0; i < count - 1; i++)
+            {
+                double value1 = ((IEnumerable<double>)from[name]).ToArray()[i];
+                double value2 = ((IEnumerable<double>)from[name]).ToArray()[i + 1];
+                double derivative = (value2 - value1) * FPS;
+                derivList.Add(derivative);
+            }
+            result.Add(name, derivList);
+        }
+        return result;
+    }
+
     private void FixedUpdate()
     {
         // if rigidbody was set to kinematic, it has to be set to false
@@ -142,75 +176,46 @@ public class CarController : MonoBehaviour
             string rayOriginName = rayOrigin.name.Replace(" ", string.Empty);
 
             // adding ray length
-            if (StartupSettings.RegisteredInputs.Contains(rayOriginName))
+            if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit))
             {
-                if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit))
-                {
-                    nnInputs.Add(rayOriginName, hit.distance);
-                    Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
-                }
-                else
-                {
-                    nnInputs.Add(rayOriginName, -1.0);
-                }
+                nnInputs.Add(rayOriginName, hit.distance);
+                Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
+            }
+            else
+            {
+                nnInputs.Add(rayOriginName, -1.0);
             }
         }
 
         // adding velocity
-        if (StartupSettings.RegisteredInputs.Contains("Speed"))
-        {
-            nnInputs.Add("Speed", this.rb.velocity.magnitude);
-        }
+        nnInputs.Add("Speed", this.rb.velocity.magnitude);
 
         // adding slip of the front wheels
-        if (StartupSettings.RegisteredInputs.Contains("FrontSlip"))
-        {
-            double frontWheelSlip = 0.0;
-            AxleInfo frontAxle = this.axleInfos[0];
-            frontAxle.LeftWheel.GetGroundHit(out WheelHit frontWheelHit);
-            frontWheelSlip += frontWheelHit.sidewaysSlip;
-            frontAxle.RightWheel.GetGroundHit(out frontWheelHit);
-            frontWheelSlip += frontWheelHit.sidewaysSlip;
-            nnInputs.Add("FrontSlip", frontWheelSlip);
-        }
+        double frontWheelSlip = 0.0;
+        AxleInfo frontAxle = this.axleInfos[0];
+        frontAxle.LeftWheel.GetGroundHit(out WheelHit frontWheelHit);
+        frontWheelSlip += frontWheelHit.sidewaysSlip;
+        frontAxle.RightWheel.GetGroundHit(out frontWheelHit);
+        frontWheelSlip += frontWheelHit.sidewaysSlip;
+        nnInputs.Add("FrontSlip", frontWheelSlip);
 
         // adding slip of the rear wheels
-        if (StartupSettings.RegisteredInputs.Contains("RearSlip"))
-        {
-            double rearWheelsSlip = 0.0;
-            AxleInfo rearAxle = this.axleInfos[1];
-            rearAxle.LeftWheel.GetGroundHit(out WheelHit rearWheelHit);
-            rearWheelsSlip += rearWheelHit.sidewaysSlip;
-            rearAxle.RightWheel.GetGroundHit(out rearWheelHit);
-            rearWheelsSlip += rearWheelHit.sidewaysSlip;
-            nnInputs.Add("RearSlip", rearWheelsSlip);
-        }
+        double rearWheelsSlip = 0.0;
+        AxleInfo rearAxle = this.axleInfos[1];
+        rearAxle.LeftWheel.GetGroundHit(out WheelHit rearWheelHit);
+        rearWheelsSlip += rearWheelHit.sidewaysSlip;
+        rearAxle.RightWheel.GetGroundHit(out rearWheelHit);
+        rearWheelsSlip += rearWheelHit.sidewaysSlip;
+        nnInputs.Add("RearSlip", rearWheelsSlip);
 
         // inputs which come now will be put to the back of the input queue
-        this.inputQueue.Enqueue(nnInputs);
+        this.AddToQueue(this.inputQueues, nnInputs);
 
         // adding derivatives
-        Dictionary<string, double>[] inputQueueArray = this.inputQueue.ToArray();
-        IEnumerable derivativeNames = from inputName
-                                      in StartupSettings.RegisteredInputs
-                                      where inputName.EndsWith("_D^1")
-                                      select inputName;
-        if (inputQueueArray.Length >= 2)
-        {
-            foreach (string derivativeName in derivativeNames)
-            {
-                // calculating list of derivatives for the given input
-                string inputName = StartupSettings.RegisteredInputs.Find((x) => x.StartsWith(derivativeName) || !x.EndsWith("_D^1"));
-                double[] derivatives = new double[inputQueueArray.Length - 1];
-                for (int i = 0; i < inputQueueArray.Length - 1; i++)
-                {
-                    double value1 = inputQueueArray[i][inputName];
-                    double value2 = inputQueueArray[i + 1][inputName];
-                    derivatives[i] = (value2 - value1) * FPS;
-                }
-                nnInputs.Add(derivativeName, derivatives.Average());
-            }
-        }
+        Debug.Assert(this.inputSteps >= 2, "Not enough inputSteps to calculate D^1");
+        Debug.Assert(this.inputSteps >= 3, "Not enough inputSteps to calculate D^2");
+        Dictionary<string, List<double>> firstDerivatives = this.GetDerivativeList(this.inputQueues, this.inputSteps);
+        Dictionary<string, List<double>> secondDerivatives = this.GetDerivativeList(firstDerivatives, this.inputSteps);
 
         // and this is the dictionary for the inputs which will be fed to the neural network now
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();
@@ -223,7 +228,7 @@ public class CarController : MonoBehaviour
             }
 
             // summing input values
-            foreach (Dictionary<string, double> input in inputQueueArray)
+            foreach (Dictionary<string, double> input in inputQueueList)
             {
                 foreach (string inputName in StartupSettings.RegisteredInputs)
                 {
@@ -234,14 +239,14 @@ public class CarController : MonoBehaviour
             // dividing by length to find average
             foreach (string inputName in StartupSettings.RegisteredInputs)
             {
-                currentInputs[inputName] /= inputQueueArray.Length;
+                currentInputs[inputName] /= inputQueueList.Length;
             }
-            this.inputQueue.Dequeue();
+            this.inputQueues.Dequeue();
         }
         else
         {
             // if input is not averaged, we just take it from the back of the input queue
-            currentInputs = this.inputQueue.Dequeue();
+            currentInputs = this.inputQueues.Dequeue();
         }
 
         // feeding inputs to the neural network
