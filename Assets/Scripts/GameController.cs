@@ -57,7 +57,6 @@ public class GameController : MonoBehaviour
     private double bestRunFitness = 0.0;                                    // best fitness achieved in this simulation
     private int breakthroughGen = 0;                                        // index of generation where best fitness was achieved
     private int breakthroughRun = 0;                                        // index of run where best fitness was achieved
-    private double timer = 0.0;                                             // time since start of the pass
     private double distance = 0.0;                                          // how much distance car has covered in this pass
     private double acceptedMinTime = -1.0;                                  // how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
     private Vector3 previousPosition;                                       // position of the car in previous frame
@@ -104,6 +103,11 @@ public class GameController : MonoBehaviour
     /// Fitness of the current pass.
     /// </summary>
     public double PassFitness { get; set; }
+
+    /// <summary>
+    /// How much time in seconds passed since beginning of the pass.
+    /// </summary>
+    public double Timer { get; set; } = 0.0;
 
     private void Start()
     {
@@ -177,7 +181,7 @@ public class GameController : MonoBehaviour
     {
         this.distance += Vector3.Distance(this.carObject.transform.position, this.previousPosition);
         this.previousPosition = this.carObject.transform.position;
-        this.timer += Time.fixedDeltaTime;
+        this.Timer += Time.fixedDeltaTime;
         if (this.CheckDeathConditions())
         {
             return;
@@ -276,7 +280,7 @@ public class GameController : MonoBehaviour
         this.bestCarText.text = "BEST: GEN " + this.breakthroughGen + " RUN " + this.breakthroughRun;
         this.minTimeText.text = "MIN TIME: " + this.acceptedMinTime;
         this.breakthroughCountText.text = "BREAKTHROUGHS: " + this.breakthroughCount;
-        this.timeText.text = "TIME: " + this.timer;
+        this.timeText.text = "TIME: " + this.Timer;
         this.speedDeathTimerText.text = string.Format("SPD: {0:0.0}", this.speedDeathTimer);
         this.fitnessDeathTimerText.text = string.Format("FIT: {0:0.0}", this.fitnessDeathTimer);
     }
@@ -415,14 +419,14 @@ public class GameController : MonoBehaviour
         double timeBonus;
         if (this.NextCheckpoint < this.checkpoints.Count)
         {
-            double averageSpeed = this.distance / this.timer;
+            double averageSpeed = this.distance / this.Timer;
             speedBonus = Math.Tanh(averageSpeed * Settings.SpeedBonusWeight);
             timeBonus = 0.0;
         }
         else
         {
             speedBonus = 0.0;
-            timeBonus = 1.0 / (this.timer + 1.0);
+            timeBonus = 1.0 / (this.Timer + 1.0);
         }
         this.PassFitness += speedBonus;
         this.PassFitness += timeBonus;
@@ -431,7 +435,7 @@ public class GameController : MonoBehaviour
         Pass pass = new Pass
         {
             Fitness = this.PassFitness,
-            Time = this.timer,
+            Time = this.Timer,
             NextCheckpoint = this.NextCheckpoint,
         };
         this.passes.Add(pass);
@@ -457,7 +461,7 @@ public class GameController : MonoBehaviour
         this.bestFitnessInThisPass = 0.0;
         this.distance = 0.0;
         this.previousPosition = this.carSpawnPoint.transform.position;
-        this.timer = 0.0;
+        this.Timer = 0.0;
         this.NextCheckpoint = 0;
         this.CollisionDetected = false;
         this.PassFitness = 0;

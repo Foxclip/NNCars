@@ -114,6 +114,44 @@ public class CarController : MonoBehaviour
         visualWheel.transform.rotation = rotation * Quaternion.Euler(0.0f, 0.0f, 90.0f);
     }
 
+    private void ApplyValues(float motor, float steering, bool clear = false)
+    {
+        // setting values to the wheels
+        foreach (AxleInfo axleInfo in this.axleInfos)
+        {
+            if (!clear)
+            {
+                // smoothing steering by repeatedly averaging target position with position of the wheels
+                for (int i = 0; i < Settings.SteeringSmoothing; i++)
+                {
+                    steering = (steering + axleInfo.LeftWheel.steerAngle) / 2.0f;
+                }
+            }
+            else
+            {
+                // stop the wheels
+                axleInfo.LeftWheel.brakeTorque = Mathf.Infinity;
+                axleInfo.RightWheel.brakeTorque = Mathf.Infinity;
+            }
+
+            // setting values of the wheel colliders
+            if (axleInfo.Steering)
+            {
+                axleInfo.LeftWheel.steerAngle = steering;
+                axleInfo.RightWheel.steerAngle = steering;
+            }
+            if (axleInfo.Motor)
+            {
+                axleInfo.LeftWheel.motorTorque = motor;
+                axleInfo.RightWheel.motorTorque = motor;
+            }
+
+            // visual wheels have to be updated
+            this.ApplyLocalPositionToVisuals(axleInfo.LeftWheel);
+            this.ApplyLocalPositionToVisuals(axleInfo.RightWheel);
+        }
+    }
+
     private void Start()
     {
         // Raycasts will hit backfaces of objects
@@ -156,41 +194,6 @@ public class CarController : MonoBehaviour
             }
         }
 
-        string str = "Registered plain inputs: ";
-        foreach (string inputName in StartupSettings.RegisteredInputs)
-        {
-            if (inputName.EndsWith("_D^1") || inputName.EndsWith("_D^2"))
-            {
-                continue;
-            }
-            str += inputName + " ";
-        }
-        Debug.Log(str);
-        str = "Calculated plain inputs: ";
-        foreach (string inputName in this.calculatedPlainInputs)
-        {
-            str += inputName + " ";
-        }
-        Debug.Log(str);
-        str = "Registered first derivatives: ";
-        foreach (string inputName in this.firstDerivativeNames)
-        {
-            str += inputName + " ";
-        }
-        Debug.Log(str);
-        str = "Calculated first derivatives: ";
-        foreach (string inputName in this.calculatedFirstDerivativeNames)
-        {
-            str += inputName + " ";
-        }
-        Debug.Log(str);
-        str = "Registered second derivatives: ";
-        foreach (string inputName in this.secondDerivativeNames)
-        {
-            str += inputName + " ";
-        }
-        Debug.Log(str);
-
         // calculating lengths of input/output queues
         this.inputSteps = (int)(Settings.InputDelay * FPS);
         this.outputSteps = (int)(Settings.OutputDelay * FPS);
@@ -201,8 +204,24 @@ public class CarController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        // if rigidbody was set to kinematic, it has to be set to false
-        this.rb.isKinematic = false;
+        // clearing values from prevoius pass
+        if (this.gameController.Timer == 0.0)
+        {
+            this.rb.isKinematic = true;
+            this.ApplyValues(0.0f, 0.0f, true);
+            return;
+        }
+        else
+        {
+            this.rb.isKinematic = false;
+
+            // remove the brakes
+            foreach (AxleInfo axleInfo in this.axleInfos)
+            {
+                axleInfo.LeftWheel.brakeTorque = 0.0f;
+                axleInfo.RightWheel.brakeTorque = 0.0f;
+            }
+        }
 
         // adding raycast lengths to list of inputs
         foreach (Transform rayOrigin in this.rayOrigins)
@@ -262,22 +281,16 @@ public class CarController : MonoBehaviour
             this.inputQueues["Steering"].Enqueue(this.axleInfos[0].LeftWheel.steerAngle / Settings.MaxSteeringAngle);
         }
 
-        Debug.Log("ADDING FIRST DERIVATIVES");
-
         // adding first derivatives
         foreach (string firstDerivativeName in this.calculatedFirstDerivativeNames)
         {
             string plainInputName = firstDerivativeName.Split('_')[0];
-            Debug.Log("GETTING FROM QUEUE FOR " + plainInputName);
             double[] inputQueueArray = this.inputQueues[plainInputName].ToArray();
             double value1 = inputQueueArray[inputQueueArray.Length - 1];
             double value2 = inputQueueArray[inputQueueArray.Length - 2];
             double firstDerivative = value2 - value1;
-            Debug.Log("ADDING TO QUEUE FOR " + firstDerivativeName);
             this.inputQueues[firstDerivativeName].Enqueue(firstDerivative);
         }
-
-        Debug.Log("ADDING SECOND DERIVATIVES");
 
         // adding second derivatives
         foreach (string secondDerivativeName in this.secondDerivativeNames)
@@ -285,15 +298,11 @@ public class CarController : MonoBehaviour
             string plainInputName = secondDerivativeName.Split('_')[0];
             string firstDerivativeName = plainInputName + "_D^1";
             double[] inputQueueArray = this.inputQueues[firstDerivativeName].ToArray();
-            Debug.Log("Calculating first derivative: " + firstDerivativeName);
-            Debug.Log(inputQueueArray.Length);
             double value1 = inputQueueArray[inputQueueArray.Length - 1];
             double value2 = inputQueueArray[inputQueueArray.Length - 2];
             double secondDerivative = value2 - value1;
             this.inputQueues[secondDerivativeName].Enqueue(secondDerivative);
         }
-
-        Debug.Log("AVERAGING INPUTS");
 
         // averaging inputs
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();
@@ -344,54 +353,28 @@ public class CarController : MonoBehaviour
             }
         }
 
-        // choosing between manual and automatic control
+        // getting output values
         float motor = 0.0f;
         float steering = 0.0f;
+        if (StartupSettings.RegisteredOutputs.Contains("motor"))
+        {
+            motor = Settings.MaxMotorTorque * (float)currentOutputs["motor"];
+
+            // car should not go backwards
+            motor = Mathf.Max(0.0f, motor);
+        }
+        if (StartupSettings.RegisteredOutputs.Contains("steering"))
+        {
+            steering = Settings.MaxSteeringAngle * (float)currentOutputs["steering"];
+        }
         if (Settings.ManualControl)
         {
-            motor = Settings.MaxMotorTorque * Input.GetAxis("Vertical");
-            steering = Settings.MaxSteeringAngle * Input.GetAxis("Horizontal");
-        }
-        else
-        {
-            if (StartupSettings.RegisteredOutputs.Contains("motor"))
-            {
-                motor = Settings.MaxMotorTorque * (float)currentOutputs["motor"];
-
-                // car should not go backwards
-                motor = Mathf.Max(0.0f, motor);
-            }
-            if (StartupSettings.RegisteredOutputs.Contains("steering"))
-            {
-                steering = Settings.MaxSteeringAngle * (float)currentOutputs["steering"];
-            }
+            motor = Settings.MaxMotorTorque * Input.GetAxisRaw("Vertical");
+            steering = Settings.MaxSteeringAngle * Input.GetAxisRaw("Horizontal");
         }
 
-        // setting values to the wheels
-        foreach (AxleInfo axleInfo in this.axleInfos)
-        {
-            // smoothing steering by repeatedly averaging target position with position of the wheels
-            for (int i = 0; i < Settings.SteeringSmoothing; i++)
-            {
-                steering = (steering + axleInfo.LeftWheel.steerAngle) / 2.0f;
-            }
-
-            // setting values of the wheel colliders
-            if (axleInfo.Steering)
-            {
-                axleInfo.LeftWheel.steerAngle = steering;
-                axleInfo.RightWheel.steerAngle = steering;
-            }
-            if (axleInfo.Motor)
-            {
-                axleInfo.LeftWheel.motorTorque = motor;
-                axleInfo.RightWheel.motorTorque = motor;
-            }
-
-            // visual wheels have to be updated
-            this.ApplyLocalPositionToVisuals(axleInfo.LeftWheel);
-            this.ApplyLocalPositionToVisuals(axleInfo.RightWheel);
-        }
+        // apply values to car
+        this.ApplyValues(motor, steering);
     }
 
     // detects if car collided with a wall
