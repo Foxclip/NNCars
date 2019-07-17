@@ -10,24 +10,28 @@ using UnityEngine;
 /// </summary>
 public class CarController : MonoBehaviour
 {
-    private const double FPS = 60.0;                        // frames per second, is used to calculate size of input/output queues
+    private const double FPS = 60.0;                                     // frames per second, is used to calculate size of input/output queues
+    private readonly List<string> calculatedPlainInputs = new List<string>(); // list of inputs that are calculated
+    private readonly List<string> firstDerivativeNames = new List<string>();
+    private readonly List<string> secondDerivativeNames = new List<string>();
+    private readonly List<string> calculatedFirstDerivativeNames = new List<string>();
 
 #pragma warning disable IDE0044 // Add readonly modifier
     [SerializeField]
-    private Transform[] rayOrigins;                         // raycasts are made in these directions
+    private Transform[] rayOrigins;                             // raycasts are made in these directions
     [SerializeField]
-    private List<AxleInfo> axleInfos;                       // the information about each individual axle
+    private List<AxleInfo> axleInfos;                           // the information about each individual axle
     [SerializeField]
-    private GameObject gameControllerObject;                // GameController object
+    private GameObject gameControllerObject;                    // GameController object
 #pragma warning restore IDE0044 // Add readonly modifier
 
-    private int inputSteps;                              // how long input queue is
-    private int outputSteps;                             // how long ouput queue is
+    private int inputSteps;                                     // how long input queue is
+    private int outputSteps;                                    // how long ouput queue is
 
-    private GameController gameController;                  // GameController script
-    private Rigidbody rb;                                   // Rigidbody of the car
-    private Dictionary<string, Queue<double>> inputQueues;   // all inputs are going through this queue
-    private Dictionary<string, Queue<double>> outputQueues;  // all outputs are going through this queue
+    private GameController gameController;                      // GameController script
+    private Rigidbody rb;                                       // Rigidbody of the car
+    private Dictionary<string, Queue<double>> inputQueues;      // all inputs are going through this queue
+    private Dictionary<string, Queue<double>> outputQueues;     // all outputs are going through this queue
 
     /// <summary>
     /// Car settings.
@@ -72,18 +76,13 @@ public class CarController : MonoBehaviour
     {
         // input queues
         this.inputQueues = new Dictionary<string, Queue<double>>();
-        foreach (string inputName in PossibleInputs)
+        List<string> allCalculatedInputs = this.calculatedPlainInputs.Concat(this.calculatedFirstDerivativeNames).Concat(this.secondDerivativeNames).ToList();
+        foreach (string inputName in allCalculatedInputs)
         {
-            string firstDerivativeName = inputName + "_D^1";
-            string secondDerivativeName = inputName + "_D^2";
             this.inputQueues.Add(inputName, new Queue<double>());
-            this.inputQueues.Add(firstDerivativeName, new Queue<double>());
-            this.inputQueues.Add(secondDerivativeName, new Queue<double>());
             for (int list_i = 0; list_i < this.inputSteps; list_i++)
             {
                 this.inputQueues[inputName].Enqueue(0.0);
-                this.inputQueues[firstDerivativeName].Enqueue(0.0);
-                this.inputQueues[secondDerivativeName].Enqueue(0.0);
             }
         }
 
@@ -124,6 +123,74 @@ public class CarController : MonoBehaviour
         this.gameController = this.gameControllerObject.GetComponent<GameController>();
         this.rb = this.GetComponent<Rigidbody>();
 
+        // setting up list of calculated inputs
+        foreach (string inputName in StartupSettings.RegisteredInputs)
+        {
+            if (inputName.EndsWith("_D^1"))
+            {
+                this.firstDerivativeNames.Add(inputName);
+                this.calculatedFirstDerivativeNames.Add(inputName);
+                string plainInputName = inputName.Split('_')[0];
+                if (!this.calculatedPlainInputs.Contains(plainInputName))
+                {
+                    this.calculatedPlainInputs.Add(plainInputName);
+                }
+            }
+            else if (inputName.EndsWith("_D^2"))
+            {
+                this.secondDerivativeNames.Add(inputName);
+                string plainInputName = inputName.Split('_')[0];
+                string firstDerivativeName = plainInputName + "_D^1";
+                if (!this.calculatedPlainInputs.Contains(plainInputName))
+                {
+                    this.calculatedPlainInputs.Add(plainInputName);
+                }
+                if (!this.calculatedFirstDerivativeNames.Contains(firstDerivativeName))
+                {
+                    this.calculatedFirstDerivativeNames.Add(firstDerivativeName);
+                }
+            }
+            else
+            {
+                this.calculatedPlainInputs.Add(inputName);
+            }
+        }
+
+        string str = "Registered plain inputs: ";
+        foreach (string inputName in StartupSettings.RegisteredInputs)
+        {
+            if (inputName.EndsWith("_D^1") || inputName.EndsWith("_D^2"))
+            {
+                continue;
+            }
+            str += inputName + " ";
+        }
+        Debug.Log(str);
+        str = "Calculated plain inputs: ";
+        foreach (string inputName in this.calculatedPlainInputs)
+        {
+            str += inputName + " ";
+        }
+        Debug.Log(str);
+        str = "Registered first derivatives: ";
+        foreach (string inputName in this.firstDerivativeNames)
+        {
+            str += inputName + " ";
+        }
+        Debug.Log(str);
+        str = "Calculated first derivatives: ";
+        foreach (string inputName in this.calculatedFirstDerivativeNames)
+        {
+            str += inputName + " ";
+        }
+        Debug.Log(str);
+        str = "Registered second derivatives: ";
+        foreach (string inputName in this.secondDerivativeNames)
+        {
+            str += inputName + " ";
+        }
+        Debug.Log(str);
+
         // calculating lengths of input/output queues
         this.inputSteps = (int)(Settings.InputDelay * FPS);
         this.outputSteps = (int)(Settings.OutputDelay * FPS);
@@ -140,68 +207,93 @@ public class CarController : MonoBehaviour
         // adding raycast lengths to list of inputs
         foreach (Transform rayOrigin in this.rayOrigins)
         {
-            // name of neural network input, as opposed to name of the object in the scene
-            string rayOriginName = rayOrigin.name.Replace(" ", string.Empty);
+            if (!(this.calculatedPlainInputs.Contains(rayOrigin.name) ||
+                this.calculatedPlainInputs.Contains(rayOrigin.name + "_D^1") ||
+                this.calculatedPlainInputs.Contains(rayOrigin.name + "_D^2")))
+            {
+                continue;
+            }
 
             // adding ray length
             if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit))
             {
-                this.inputQueues[rayOriginName].Enqueue(hit.distance);
+                this.inputQueues[rayOrigin.name].Enqueue(hit.distance);
                 Debug.DrawRay(rayOrigin.position, rayOrigin.forward * hit.distance, Color.yellow);
             }
             else
             {
-                this.inputQueues[rayOriginName].Enqueue(-1.0);
+                this.inputQueues[rayOrigin.name].Enqueue(-1.0);
             }
         }
 
         // adding velocity
-        this.inputQueues["Speed"].Enqueue(this.rb.velocity.magnitude);
+        if (this.calculatedPlainInputs.Contains("Speed"))
+        {
+            this.inputQueues["Speed"].Enqueue(this.rb.velocity.magnitude);
+        }
 
         // adding slip of the front wheels
-        double frontWheelSlip = 0.0;
-        AxleInfo frontAxle = this.axleInfos[0];
-        frontAxle.LeftWheel.GetGroundHit(out WheelHit frontWheelHit);
-        frontWheelSlip += frontWheelHit.sidewaysSlip;
-        frontAxle.RightWheel.GetGroundHit(out frontWheelHit);
-        frontWheelSlip += frontWheelHit.sidewaysSlip;
-        this.inputQueues["FrontSlip"].Enqueue(frontWheelSlip);
+        if (this.calculatedPlainInputs.Contains("FrontSlip"))
+        {
+            double frontWheelSlip = 0.0;
+            AxleInfo frontAxle = this.axleInfos[0];
+            frontAxle.LeftWheel.GetGroundHit(out WheelHit frontWheelHit);
+            frontWheelSlip += frontWheelHit.sidewaysSlip;
+            frontAxle.RightWheel.GetGroundHit(out frontWheelHit);
+            frontWheelSlip += frontWheelHit.sidewaysSlip;
+            this.inputQueues["FrontSlip"].Enqueue(frontWheelSlip);
+        }
 
         // adding slip of the rear wheels
-        double rearWheelSlip = 0.0;
-        AxleInfo rearAxle = this.axleInfos[1];
-        rearAxle.LeftWheel.GetGroundHit(out WheelHit rearWheelHit);
-        rearWheelSlip += rearWheelHit.sidewaysSlip;
-        rearAxle.RightWheel.GetGroundHit(out rearWheelHit);
-        rearWheelSlip += rearWheelHit.sidewaysSlip;
-        this.inputQueues["RearSlip"].Enqueue(rearWheelSlip);
+        if (this.calculatedPlainInputs.Contains("RearSlip"))
+        {
+            double rearWheelSlip = 0.0;
+            AxleInfo rearAxle = this.axleInfos[1];
+            rearAxle.LeftWheel.GetGroundHit(out WheelHit rearWheelHit);
+            rearWheelSlip += rearWheelHit.sidewaysSlip;
+            rearAxle.RightWheel.GetGroundHit(out rearWheelHit);
+            rearWheelSlip += rearWheelHit.sidewaysSlip;
+            this.inputQueues["RearSlip"].Enqueue(rearWheelSlip);
+        }
 
         // adding steering
-        this.inputQueues["Steering"].Enqueue(this.axleInfos[0].LeftWheel.steerAngle / Settings.MaxSteeringAngle);
+        if (this.calculatedPlainInputs.Contains("Steering"))
+        {
+            this.inputQueues["Steering"].Enqueue(this.axleInfos[0].LeftWheel.steerAngle / Settings.MaxSteeringAngle);
+        }
+
+        Debug.Log("ADDING FIRST DERIVATIVES");
 
         // adding first derivatives
-        List<string> firstDerivativeNames = new List<string>();
-        foreach (string inputName in PossibleInputs)
+        foreach (string firstDerivativeName in this.calculatedFirstDerivativeNames)
         {
-            double[] inputQueueArray = this.inputQueues[inputName].ToArray();
+            string plainInputName = firstDerivativeName.Split('_')[0];
+            Debug.Log("GETTING FROM QUEUE FOR " + plainInputName);
+            double[] inputQueueArray = this.inputQueues[plainInputName].ToArray();
             double value1 = inputQueueArray[inputQueueArray.Length - 1];
             double value2 = inputQueueArray[inputQueueArray.Length - 2];
             double firstDerivative = value2 - value1;
-            string firstDerivativeName = inputName + "_D^1";
+            Debug.Log("ADDING TO QUEUE FOR " + firstDerivativeName);
             this.inputQueues[firstDerivativeName].Enqueue(firstDerivative);
-            firstDerivativeNames.Add(firstDerivativeName);
         }
 
+        Debug.Log("ADDING SECOND DERIVATIVES");
+
         // adding second derivatives
-        foreach (string firstDerivativeName in firstDerivativeNames)
+        foreach (string secondDerivativeName in this.secondDerivativeNames)
         {
+            string plainInputName = secondDerivativeName.Split('_')[0];
+            string firstDerivativeName = plainInputName + "_D^1";
             double[] inputQueueArray = this.inputQueues[firstDerivativeName].ToArray();
+            Debug.Log("Calculating first derivative: " + firstDerivativeName);
+            Debug.Log(inputQueueArray.Length);
             double value1 = inputQueueArray[inputQueueArray.Length - 1];
             double value2 = inputQueueArray[inputQueueArray.Length - 2];
             double secondDerivative = value2 - value1;
-            string secondDerivativeName = firstDerivativeName.Split('_')[0] + "_D^2";
             this.inputQueues[secondDerivativeName].Enqueue(secondDerivative);
         }
+
+        Debug.Log("AVERAGING INPUTS");
 
         // averaging inputs
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();

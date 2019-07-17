@@ -1472,7 +1472,7 @@ GameObject:
   m_Component:
   - component: {fileID: 399268979}
   m_Layer: 2
-  m_Name: Ray Right Front 45
+  m_Name: RayRightFront45
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1502,7 +1502,7 @@ GameObject:
   m_Component:
   - component: {fileID: 404583675}
   m_Layer: 2
-  m_Name: Ray Forward
+  m_Name: RayForward
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1624,7 +1624,7 @@ GameObject:
   m_Component:
   - component: {fileID: 479666611}
   m_Layer: 2
-  m_Name: Ray Right 90
+  m_Name: RayRight90
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2700,7 +2700,7 @@ GameObject:
   m_Component:
   - component: {fileID: 713954651}
   m_Layer: 2
-  m_Name: Ray Left Front 22
+  m_Name: RayLeftFront22
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2805,7 +2805,7 @@ GameObject:
   m_Component:
   - component: {fileID: 718383415}
   m_Layer: 2
-  m_Name: Ray Right Front 22
+  m_Name: RayRightFront22
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4267,7 +4267,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1312550663}
   m_Layer: 2
-  m_Name: Ray Left 90
+  m_Name: RayLeft90
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6622,7 +6622,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1823321741}
   m_Layer: 2
-  m_Name: Ray Right 68
+  m_Name: RayRight68
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7116,7 +7116,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2064033040}
   m_Layer: 2
-  m_Name: Ray Left 68
+  m_Name: RayLeft68
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7774,7 +7774,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2126643479}
   m_Layer: 2
-  m_Name: Ray Left Front 45
+  m_Name: RayLeftFront45
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
