@@ -40,8 +40,6 @@ public class NeuralNetwork
 
     [DataMember]
     private readonly List<Neuron> allNeurons = new List<Neuron>();
-    [DataMember]
-    private int id = 0;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NeuralNetwork"/> class.
@@ -61,7 +59,7 @@ public class NeuralNetwork
     public NeuralNetwork(List<string> inputNames, List<string> outputNames, int hiddenLayers, int neuronsInLayer)
     {
         // assigning id
-        this.id = networkIdCounter;
+        this.Id = networkIdCounter;
         networkIdCounter++;
 
         // adding input neurons
@@ -208,6 +206,12 @@ public class NeuralNetwork
     /// </summary>
     [DataMember]
     public string TrackName { get; set; } = null;
+
+    /// <summary>
+    /// Id of the network.
+    /// </summary>
+    [DataMember]
+    public int Id { get; set; } = 0;
 
     /// <summary>
     /// Adds new input neuron to the neural network (and, optionally, connect it to the next layer).
@@ -420,7 +424,7 @@ public class NeuralNetwork
     /// <returns>String representation of the network.</returns>
     public override string ToString()
     {
-        string s = string.Format("id: {0}\n", this.id);
+        string s = string.Format("id: {0}\n", this.Id);
         for (int i = 0; i < this.Layers.Count; i++)
         {
             List<Neuron> layer = this.Layers[i];
@@ -437,10 +441,11 @@ public class NeuralNetwork
     /// Copies neural network. Copy receives higher id than original.
     /// </summary>
     /// <returns>Copy of this neural network, but with higher id.</returns>
-    public NeuralNetwork Copy()
+    public NeuralNetwork Copy(bool increaseId)
     {
         NeuralNetwork copy = Utils.ObjectCopier.Clone<NeuralNetwork>(this);
-        copy.id++;
+        copy.Id = networkIdCounter;
+        networkIdCounter++;
         return copy;
     }
 
@@ -498,7 +503,7 @@ public class NeuralNetwork
         StreamWriter writer = new StreamWriter(filename);
 
         // saving network properties
-        writer.WriteLine("id " + this.id);
+        writer.WriteLine("id " + this.Id);
         writer.WriteLine("fitness " + this.Fitness);
         writer.WriteLine("breakthroughCount " + this.BreakthroughCount);
         writer.WriteLine("trackName " + this.TrackName);
@@ -538,7 +543,7 @@ public class NeuralNetwork
         NeuralNetwork loadedNetwork = new NeuralNetwork
         {
             // loading network properties
-            id = int.Parse(reader.ReadLine().Split(' ')[1]),
+            Id = int.Parse(reader.ReadLine().Split(' ')[1]),
             Fitness = double.Parse(reader.ReadLine().Split(' ')[1]),
             BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]),
             TrackName = reader.ReadLine().Split(' ')[1],
@@ -799,7 +804,7 @@ internal class Program
         Console.WriteLine("Copying test");
         Console.WriteLine();
 
-        NeuralNetwork network2 = network1.Copy();
+        NeuralNetwork network2 = network1.Copy(true);
         network2.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network2);
         Console.WriteLine();
@@ -807,7 +812,7 @@ internal class Program
         Console.WriteLine("Random weights test");
         Console.WriteLine();
 
-        NeuralNetwork network3 = network2.Copy();
+        NeuralNetwork network3 = network2.Copy(true);
         network3.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network3);
         Console.WriteLine();

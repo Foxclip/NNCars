@@ -340,8 +340,17 @@ public class GameController : MonoBehaviour
         List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
         for (int i = 0; i < Settings.PopulationSize; i++)
         {
+            NeuralNetwork newNetwork;
+
             // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
-            NeuralNetwork newNetwork = this.bestNetwork.Copy();
+            if (i == 0)
+            {
+                newNetwork = this.bestNetwork.Copy(false);
+            }
+            else
+            {
+                newNetwork = this.bestNetwork.Copy(true);
+            }
             newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow((double)i / Settings.PopulationSize, Settings.MutationPower));
             newGeneration.Add(newNetwork);
         }
@@ -428,8 +437,15 @@ public class GameController : MonoBehaviour
             speedBonus = 0.0;
             timeBonus = 1.0 / (this.Timer + 1.0);
         }
+
+        Debug.Log($"Neural network id: {this.carController.NeuralNetwork.Id}");
+
+        Debug.Log($"Pass fitness before bonuses: {this.PassFitness}");
+
         this.PassFitness += speedBonus;
         this.PassFitness += timeBonus;
+
+        Debug.Log($"Pass fitness after bonuses: {this.PassFitness}");
 
         // adding this pass to the list
         Pass pass = new Pass
@@ -440,8 +456,10 @@ public class GameController : MonoBehaviour
         };
         this.passes.Add(pass);
 
+        Debug.Log($"passFitness {this.PassFitness} time {this.Timer} nextCheckpoint {this.NextCheckpoint}");
+
         // if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
-        if (Settings.RunAcceptMode == RunAcceptModes.All && this.PassFitness < this.bestRunFitness)
+        if (Settings.RunAcceptMode == RunAcceptModes.All && this.PassFitness <= this.bestRunFitness)
         {
             return true;
         }
@@ -469,6 +487,8 @@ public class GameController : MonoBehaviour
 
         // randomized rotation
         this.carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(this.passIndex, 0, Settings.PassCount - 1, Settings.RandomAngleMin, Settings.RandomAngleMax));
+
+        Debug.Log($"Gen {this.generationIndex} Run {this.runIndex} Pass {this.passIndex}");
     }
 
     // proceed to the next run
