@@ -45,7 +45,7 @@ public class CarController : MonoBehaviour
         "RayLeft90", "RayRight90",
         "RayLeftFront22", "RayRightFront22",
         "RayLeft68", "RayRight68",
-        "Speed", "FrontSlip", "RearSlip",
+        "Speed", "FrontSlip", "RearSlip", "Steering",
     };
 
     /// <summary>
@@ -175,6 +175,9 @@ public class CarController : MonoBehaviour
         rearAxle.RightWheel.GetGroundHit(out rearWheelHit);
         rearWheelSlip += rearWheelHit.sidewaysSlip;
         this.inputQueues["RearSlip"].Enqueue(rearWheelSlip);
+
+        // adding steering
+        this.inputQueues["Steering"].Enqueue(this.axleInfos[0].LeftWheel.steerAngle / Settings.MaxSteeringAngle);
 
         // adding first derivatives
         List<string> firstDerivativeNames = new List<string>();
