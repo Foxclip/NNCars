@@ -297,19 +297,16 @@ public class CarController : MonoBehaviour
 
         // averaging inputs
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();
-        if (Settings.AveragedInput)
+        foreach (string inputName in this.inputQueues.Keys)
         {
-            foreach (string inputName in this.inputQueues.Keys)
+            if (Settings.AveragedInput)
             {
-                if (Settings.AveragedInput)
-                {
-                    currentInputs.Add(inputName, this.inputQueues[inputName].Average());
-                    this.inputQueues[inputName].Dequeue();
-                }
-                else
-                {
-                    currentInputs.Add(inputName, this.inputQueues[inputName].Dequeue());
-                }
+                currentInputs.Add(inputName, this.inputQueues[inputName].Average());
+                this.inputQueues[inputName].Dequeue();
+            }
+            else
+            {
+                currentInputs.Add(inputName, this.inputQueues[inputName].Dequeue());
             }
         }
 
@@ -336,7 +333,15 @@ public class CarController : MonoBehaviour
         Dictionary<string, double> currentOutputs = new Dictionary<string, double>();
         foreach (string outputName in neuralNetworkOutput.Keys)
         {
-            currentOutputs.Add(outputName, this.outputQueues[outputName].Dequeue());
+            if (Settings.AveragedOutput)
+            {
+                currentOutputs.Add(outputName, this.outputQueues[outputName].Average());
+                this.outputQueues[outputName].Dequeue();
+            }
+            else
+            {
+                currentOutputs.Add(outputName, this.outputQueues[outputName].Dequeue());
+            }
         }
 
         // choosing between manual and automatic control
@@ -471,5 +476,11 @@ public class CarController : MonoBehaviour
         /// </summary>
         [DataMember]
         public bool AveragedInput { get; set; } = true;
+
+        /// <summary>
+        /// Neural network output will be averaged.
+        /// </summary>
+        [DataMember]
+        public bool AveragedOutput { get; set; } = true;
     }
 }
