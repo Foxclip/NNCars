@@ -169,6 +169,8 @@ public class GameController : MonoBehaviour
             }
             this.fastForward = !this.fastForward;
         }
+
+        this.UpdateUIText();
     }
 
     private void FixedUpdate()
@@ -184,8 +186,6 @@ public class GameController : MonoBehaviour
         this.UpdateDeathTimers();
 
         this.AddBonuses();
-
-        this.UpdateUIText();
     }
 
     private bool CheckDeathConditions()
