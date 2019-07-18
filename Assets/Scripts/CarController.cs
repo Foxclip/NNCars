@@ -195,8 +195,8 @@ public class CarController : MonoBehaviour
         }
 
         // calculating lengths of input/output queues
-        this.inputSteps = (int)(Settings.InputDelay * FPS);
-        this.outputSteps = (int)(Settings.OutputDelay * FPS);
+        this.inputSteps = (int)(Settings.InputQueueTime * FPS);
+        this.outputSteps = (int)(Settings.OutputQueueTime * FPS);
 
         // input/output queues should be reset before starting, since neural network takes values from the front of the queue
         this.ResetQueues();
@@ -304,18 +304,23 @@ public class CarController : MonoBehaviour
             this.inputQueues[secondDerivativeName].Enqueue(secondDerivative);
         }
 
-        // averaging inputs
+        // taking inputs from the queues
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();
         foreach (string inputName in this.inputQueues.Keys)
         {
-            if (Settings.AveragedInput)
+            if (Settings.ResponseMode == CarSettings.ResponseModes.Averaged)
             {
                 currentInputs.Add(inputName, this.inputQueues[inputName].Average());
                 this.inputQueues[inputName].Dequeue();
             }
-            else
+            if (Settings.ResponseMode == CarSettings.ResponseModes.Delayed)
             {
                 currentInputs.Add(inputName, this.inputQueues[inputName].Dequeue());
+            }
+            if (Settings.ResponseMode == CarSettings.ResponseModes.Instant)
+            {
+                currentInputs.Add(inputName, this.inputQueues[inputName].Last());
+                this.inputQueues[inputName].Dequeue();
             }
         }
 
@@ -338,18 +343,23 @@ public class CarController : MonoBehaviour
             this.outputQueues[outputName].Enqueue(neuralNetworkOutput[outputName]);
         }
 
-        // curent outputs are taken from the back of the output queue
+        // taking outputs from the queues
         Dictionary<string, double> currentOutputs = new Dictionary<string, double>();
         foreach (string outputName in neuralNetworkOutput.Keys)
         {
-            if (Settings.AveragedOutput)
+            if (Settings.ResponseMode == CarSettings.ResponseModes.Averaged)
             {
                 currentOutputs.Add(outputName, this.outputQueues[outputName].Average());
                 this.outputQueues[outputName].Dequeue();
             }
-            else
+            if (Settings.ResponseMode == CarSettings.ResponseModes.Delayed)
             {
                 currentOutputs.Add(outputName, this.outputQueues[outputName].Dequeue());
+            }
+            if (Settings.ResponseMode == CarSettings.ResponseModes.Instant)
+            {
+                currentOutputs.Add(outputName, this.outputQueues[outputName].Last());
+                this.outputQueues[outputName].Dequeue();
             }
         }
 
@@ -419,6 +429,27 @@ public class CarController : MonoBehaviour
     public class CarSettings : StartupSettings.SettingList
     {
         /// <summary>
+        /// Determines how the car will respond to inputs.
+        /// </summary>
+        public enum ResponseModes
+        {
+            /// <summary>
+            /// Respond instantly.
+            /// </summary>
+            Instant,
+
+            /// <summary>
+            /// Respond with some delay.
+            /// </summary>
+            Delayed,
+
+            /// <summary>
+            /// Inputs are averaged.
+            /// </summary>
+            Averaged,
+        }
+
+        /// <summary>
         /// If by some reason manual keyboard control is needed.
         /// </summary>
         [DataMember]
@@ -443,27 +474,21 @@ public class CarController : MonoBehaviour
         public int SteeringSmoothing { get; set; } = 1;
 
         /// <summary>
-        /// Inputs are fed to neural network with this delay.
+        /// How long input queue is.
         /// </summary>
         [DataMember]
-        public float InputDelay { get; set; } = 0.1f;
+        public float InputQueueTime { get; set; } = 0.1f;
 
         /// <summary>
-        /// Outputs are sent to the wheels, but they get there after this delay.
+        /// How long output queue is.
         /// </summary>
         [DataMember]
-        public float OutputDelay { get; set; } = 0.1f;
+        public float OutputQueueTime { get; set; } = 0.1f;
 
         /// <summary>
-        /// All values in the input queue are averaged, setting this to true will lead to smoother response of the neural network.
+        /// Determines how the car will respond to inputs.
         /// </summary>
         [DataMember]
-        public bool AveragedInput { get; set; } = true;
-
-        /// <summary>
-        /// Neural network output will be averaged.
-        /// </summary>
-        [DataMember]
-        public bool AveragedOutput { get; set; } = true;
+        public ResponseModes ResponseMode { get; set; }
     }
 }
