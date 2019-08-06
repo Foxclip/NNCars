@@ -306,9 +306,10 @@ public class GameController : MonoBehaviour
             // saving best neural network to file
             string trackName = this.track.name.Replace(" ", string.Empty);
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+            string minTimeString = string.Format("{0:0.00}", this.acceptedMinTime);
             string bcString = "bc" + this.breakthroughCount;
             string genRunString = "g" + this.generationIndex + "r" + this.runIndex;
-            string filePath = trackName + "_" + dateString + "_" + bcString + "_" + genRunString + ".txt";
+            string filePath = trackName + "_" + dateString + "_" + minTimeString + "_" + bcString + "_" + genRunString + ".txt";
             Directory.CreateDirectory(this.networksFolderPath);
             this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath);
         }
