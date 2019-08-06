@@ -346,11 +346,11 @@ public class GameController : MonoBehaviour
             // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
             if (i == 0)
             {
-                newNetwork = this.bestNetwork.Copy(false);
+                newNetwork = this.bestNetwork.Copy();
             }
             else
             {
-                newNetwork = this.bestNetwork.Copy(true);
+                newNetwork = this.bestNetwork.Copy();
             }
             newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow((double)i / Settings.PopulationSize, Settings.MutationPower));
             newGeneration.Add(newNetwork);

@@ -441,7 +441,7 @@ public class NeuralNetwork
     /// Copies neural network. Copy receives higher id than original.
     /// </summary>
     /// <returns>Copy of this neural network, but with higher id.</returns>
-    public NeuralNetwork Copy(bool increaseId)
+    public NeuralNetwork Copy()
     {
         NeuralNetwork copy = Utils.ObjectCopier.Clone<NeuralNetwork>(this);
         copy.Id = networkIdCounter;
@@ -804,7 +804,7 @@ internal class Program
         Console.WriteLine("Copying test");
         Console.WriteLine();
 
-        NeuralNetwork network2 = network1.Copy(true);
+        NeuralNetwork network2 = network1.Copy();
         network2.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network2);
         Console.WriteLine();
@@ -812,7 +812,7 @@ internal class Program
         Console.WriteLine("Random weights test");
         Console.WriteLine();
 
-        NeuralNetwork network3 = network2.Copy(true);
+        NeuralNetwork network3 = network2.Copy();
         network3.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network3);
         Console.WriteLine();
