@@ -32,6 +32,8 @@ public class CarController : MonoBehaviour
     private Rigidbody rb;                                       // Rigidbody of the car
     private Dictionary<string, Queue<double>> inputQueues;      // all inputs are going through this queue
     private Dictionary<string, Queue<double>> outputQueues;     // all outputs are going through this queue
+    private Dictionary<string, double> inputAverages;           // current average inputs
+    private Dictionary<string, double> outputAverages;          // current average outputs
 
     /// <summary>
     /// Car settings.
@@ -76,6 +78,7 @@ public class CarController : MonoBehaviour
     {
         // input queues
         this.inputQueues = new Dictionary<string, Queue<double>>();
+        this.inputAverages = new Dictionary<string, double>();
         List<string> allCalculatedInputs = this.calculatedPlainInputs.Concat(this.calculatedFirstDerivativeNames).Concat(this.secondDerivativeNames).ToList();
         foreach (string inputName in allCalculatedInputs)
         {
@@ -84,10 +87,12 @@ public class CarController : MonoBehaviour
             {
                 this.inputQueues[inputName].Enqueue(0.0);
             }
+            this.inputAverages.Add(inputName, 0.0);
         }
 
         // output queues
         this.outputQueues = new Dictionary<string, Queue<double>>();
+        this.outputAverages = new Dictionary<string, double>();
         foreach (string outputName in PossibleOutputs)
         {
             this.outputQueues.Add(outputName, new Queue<double>());
@@ -95,6 +100,7 @@ public class CarController : MonoBehaviour
             {
                 this.outputQueues[outputName].Enqueue(0.0);
             }
+            this.outputAverages.Add(outputName, 0.0);
         }
     }
 
@@ -304,13 +310,32 @@ public class CarController : MonoBehaviour
             this.inputQueues[secondDerivativeName].Enqueue(secondDerivative);
         }
 
+        // updating input averages
+        // ToList() is needed because dictionary is modified
+        foreach (string inputName in this.inputAverages.Keys.ToList())
+        {
+            double a = this.inputAverages[inputName];
+            double n = this.inputQueues[inputName].Last();
+            double c = this.inputQueues[inputName].Count;
+            this.inputAverages[inputName] = a + ((n - a) / (c + 1));
+        }
+
+        // updating output averages
+        foreach (string outputName in this.outputAverages.Keys.ToList())
+        {
+            double a = this.outputAverages[outputName];
+            double n = this.outputQueues[outputName].Last();
+            double c = this.outputQueues[outputName].Count;
+            this.outputAverages[outputName] = a + ((n - a) / (c + 1));
+        }
+
         // taking inputs from the queues
         Dictionary<string, double> currentInputs = new Dictionary<string, double>();
         foreach (string inputName in this.inputQueues.Keys)
         {
             if (Settings.ResponseMode == CarSettings.ResponseModes.Averaged)
             {
-                currentInputs.Add(inputName, this.inputQueues[inputName].Average());
+                currentInputs.Add(inputName, this.inputAverages[inputName]);
                 this.inputQueues[inputName].Dequeue();
             }
             if (Settings.ResponseMode == CarSettings.ResponseModes.Delayed)
@@ -349,7 +374,7 @@ public class CarController : MonoBehaviour
         {
             if (Settings.ResponseMode == CarSettings.ResponseModes.Averaged)
             {
-                currentOutputs.Add(outputName, this.outputQueues[outputName].Average());
+                currentOutputs.Add(outputName, this.outputAverages[outputName]);
                 this.outputQueues[outputName].Dequeue();
             }
             if (Settings.ResponseMode == CarSettings.ResponseModes.Delayed)
