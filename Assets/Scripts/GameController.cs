@@ -289,6 +289,7 @@ public class GameController : MonoBehaviour
     {
         // has to be in here so it will be saved in the file
         this.Generation[this.runIndex].Fitness = runFitness;
+        this.Generation[this.runIndex].MinTime = runMinTime;
 
         // updating fitness and best results
         // if it is same neural network (run 0), result is not accepted, except if it is first update
@@ -306,7 +307,7 @@ public class GameController : MonoBehaviour
             // saving best neural network to file
             string trackName = this.track.name.Replace(" ", string.Empty);
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            string minTimeString = string.Format("{0:0.00}", this.acceptedMinTime);
+            string minTimeString = $"T{this.acceptedMinTime:0.00}";
             string bcString = "bc" + this.breakthroughCount;
             string genRunString = "g" + this.generationIndex + "r" + this.runIndex;
             string filePath = trackName + "_" + dateString + "_" + minTimeString + "_" + bcString + "_" + genRunString + ".txt";

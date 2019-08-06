@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
@@ -212,6 +213,12 @@ public class NeuralNetwork
     /// </summary>
     [DataMember]
     public int Id { get; set; } = 0;
+
+    /// <summary>
+    /// Minimal time around the track.
+    /// </summary>
+    [DataMember]
+    public double MinTime { get; set; }
 
     /// <summary>
     /// Adds new input neuron to the neural network (and, optionally, connect it to the next layer).
@@ -507,6 +514,7 @@ public class NeuralNetwork
         writer.WriteLine("fitness " + this.Fitness);
         writer.WriteLine("breakthroughCount " + this.BreakthroughCount);
         writer.WriteLine("trackName " + this.TrackName);
+        writer.WriteLine("minTime " + this.MinTime);
         writer.WriteLine();
 
         // saving neurons
@@ -547,10 +555,19 @@ public class NeuralNetwork
             Fitness = double.Parse(reader.ReadLine().Split(' ')[1]),
             BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]),
             TrackName = reader.ReadLine().Split(' ')[1],
+            MinTime = double.Parse(reader.ReadLine().Split(' ')[1]),
         };
 
         // these properties will be skipped on the second pass, so we need to know amount of them
-        const int networkParameterCount = 4;
+        int networkParameterCount = 0;
+        PropertyInfo[] pi = typeof(NeuralNetwork).GetProperties();
+        foreach (PropertyInfo info in pi)
+        {
+            if (info.PropertyType.IsPrimitive || info.PropertyType == typeof(string))
+            {
+                networkParameterCount++;
+            }
+        }
 
         // skipping empty line
         reader.ReadLine();
