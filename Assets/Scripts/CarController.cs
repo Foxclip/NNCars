@@ -370,8 +370,11 @@ public class CarController : MonoBehaviour
         {
             motor = Settings.MaxMotorTorque * (float)currentOutputs["motor"];
 
-            // car should not go backwards
-            motor = Mathf.Max(0.0f, motor);
+            // if car cannot reverse
+            if (!Settings.ReverseGear)
+            {
+                motor = Mathf.Max(0.0f, motor);
+            }
         }
         if (StartupSettings.RegisteredOutputs.Contains("steering"))
         {
@@ -489,6 +492,12 @@ public class CarController : MonoBehaviour
         /// Determines how the car will respond to inputs.
         /// </summary>
         [DataMember]
-        public ResponseModes ResponseMode { get; set; }
+        public ResponseModes ResponseMode { get; set; } = ResponseModes.Instant;
+
+        /// <summary>
+        /// Whether car can reverse.
+        /// </summary>
+        [DataMember]
+        public bool ReverseGear { get; set; } = false;
     }
 }
