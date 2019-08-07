@@ -60,6 +60,8 @@ public class GameController : MonoBehaviour
     private double distance = 0.0;                                          // how much distance car has covered in this pass
     private double acceptedMinTime = -1.0;                                  // how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
     private Vector3 previousPosition;                                       // position of the car in previous frame
+    private float steeringAmount = 0.0f;                                    // how much wheels have turned in this pass, needed to calculate steering penalty
+    private float previousSteering = 0.0f;                                  // steering angle in previous frame
     private int breakthroughCount = 0;                                      // how much fitness improvements happened with this neural network
     private bool fastForward = false;                                       // whether fast forward function is activated
 
@@ -181,6 +183,8 @@ public class GameController : MonoBehaviour
     {
         this.distance += Vector3.Distance(this.carObject.transform.position, this.previousPosition);
         this.previousPosition = this.carObject.transform.position;
+        this.steeringAmount += Mathf.Abs(this.carController.SteeringAngle - this.previousSteering);
+        this.previousSteering = this.carController.SteeringAngle;
         this.Timer += Time.fixedDeltaTime;
         if (this.CheckDeathConditions())
         {
@@ -440,14 +444,14 @@ public class GameController : MonoBehaviour
             timeBonus = 1.0 / (this.Timer + 1.0);
         }
 
-        Debug.Log($"Neural network id: {this.carController.NeuralNetwork.Id}");
-
-        Debug.Log($"Pass fitness before bonuses: {this.PassFitness}");
-
         this.PassFitness += speedBonus;
         this.PassFitness += timeBonus;
 
-        Debug.Log($"Pass fitness after bonuses: {this.PassFitness}");
+        // steering bonus
+        double steeringBonus = 1.0 / (this.steeringAmount + 1) * Settings.SteeringPenaltyWeight;
+        this.PassFitness += steeringBonus;
+
+        Debug.Log($"Speed bonus: {speedBonus} Time bonus: {timeBonus} Steering bonus: {steeringBonus}");
 
         // adding this pass to the list
         Pass pass = new Pass
@@ -457,8 +461,6 @@ public class GameController : MonoBehaviour
             NextCheckpoint = this.NextCheckpoint,
         };
         this.passes.Add(pass);
-
-        Debug.Log($"passFitness {this.PassFitness} time {this.Timer} nextCheckpoint {this.NextCheckpoint}");
 
         // if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
         if (Settings.RunAcceptMode == RunAcceptModes.All && this.PassFitness <= this.bestRunFitness)
@@ -627,6 +629,12 @@ public class GameController : MonoBehaviour
         /// </summary>
         [DataMember]
         public float SpeedBonusWeight { get; set; } = 1.0f;
+
+        /// <summary>
+        /// Weight of the steering penalty.
+        /// </summary>
+        [DataMember]
+        public float SteeringPenaltyWeight { get; set; } = 1.0f;
 
         /// <summary>
         /// Determines how fitness of the run is calculated.

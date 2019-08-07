@@ -71,6 +71,17 @@ public class CarController : MonoBehaviour
     public GameObject CarSpawnPoint { get; set; }
 
     /// <summary>
+    /// Steering angle of the left wheel.
+    /// </summary>
+    public float SteeringAngle
+    {
+        get
+        {
+            return this.axleInfos[0].LeftWheel.steerAngle;
+        }
+    }
+
+    /// <summary>
     /// Fills input and output queues with zeroes.
     /// Should be called before starting a new pass.
     /// </summary>
