@@ -49,16 +49,16 @@ public class GameController : MonoBehaviour
     private NeuralNetwork bestNetwork;                                      // best result of the simulation
     private double bestFitnessInThisPass = 0.0;                             // best fitness achieved in this pass, pass is ended if it does not imporve for some amount of time
     private List<Pass> passes;                                              // list of passes in the run, used to calculate fitness of the run
-    private double fitnessDeathTimer = 0.0;                                 // how much time passed since last improvement of bestFitnessInThisPass
-    private double speedDeathTimer = 0.0;                                   // how much time passed since speed was not too low
+    private float fitnessDeathTimer = 0.0f;                                 // how much time passed since last improvement of bestFitnessInThisPass
+    private float speedDeathTimer = 0.0f;                                   // how much time passed since speed was not too low
     private int generationIndex = 0;                                        // index of current generation
     private int runIndex = 0;                                               // index of current run
     private int passIndex = 0;                                              // index of current pass
-    private double bestRunFitness = 0.0;                                    // best fitness achieved in this simulation
+    private double bestRunFitness = 0.0f;                                   // best fitness achieved in this simulation
     private int breakthroughGen = 0;                                        // index of generation where best fitness was achieved
     private int breakthroughRun = 0;                                        // index of run where best fitness was achieved
-    private double distance = 0.0;                                          // how much distance car has covered in this pass
-    private double acceptedMinTime = -1.0;                                  // how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
+    private float distance = 0.0f;                                          // how much distance car has covered in this pass
+    private float acceptedMinTime = -1.0f;                                  // how fast car was able to comlete the track, should be -1 if it hasn't completed it yet
     private Vector3 previousPosition;                                       // position of the car in previous frame
     private float steeringAmount = 0.0f;                                    // how much wheels have turned in this pass, needed to calculate steering penalty
     private float previousSteering = 0.0f;                                  // steering angle in previous frame
@@ -109,7 +109,7 @@ public class GameController : MonoBehaviour
     /// <summary>
     /// How much time in seconds passed since beginning of the pass.
     /// </summary>
-    public double Timer { get; set; } = 0.0;
+    public float Timer { get; set; } = 0.0f;
 
     private void Start()
     {
@@ -186,6 +186,10 @@ public class GameController : MonoBehaviour
         this.steeringAmount += Mathf.Abs(this.carController.SteeringAngle - this.previousSteering);
         this.previousSteering = this.carController.SteeringAngle;
         this.Timer += Time.fixedDeltaTime;
+
+        // float addition is somewhat imprecise, so this is needed
+        this.Timer = (float)Math.Round((decimal)this.Timer, 2, MidpointRounding.AwayFromZero);
+
         if (this.CheckDeathConditions())
         {
             return;
@@ -235,7 +239,7 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            this.fitnessDeathTimer = 0.0;
+            this.fitnessDeathTimer = 0.0f;
             this.bestFitnessInThisPass = this.PassFitness;
         }
 
@@ -247,7 +251,7 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            this.speedDeathTimer = 0.0;
+            this.speedDeathTimer = 0.0f;
         }
     }
 
@@ -284,12 +288,12 @@ public class GameController : MonoBehaviour
         this.bestCarText.text = "BEST: GEN " + this.breakthroughGen + " RUN " + this.breakthroughRun;
         this.minTimeText.text = "MIN TIME: " + this.acceptedMinTime;
         this.breakthroughCountText.text = "BREAKTHROUGHS: " + this.breakthroughCount;
-        this.timeText.text = "TIME: " + this.Timer;
+        this.timeText.text = $"TIME: {this.Timer:0.00}";
         this.speedDeathTimerText.text = string.Format("SPD: {0:0.0}", this.speedDeathTimer);
         this.fitnessDeathTimerText.text = string.Format("FIT: {0:0.0}", this.fitnessDeathTimer);
     }
 
-    private void CheckBestResult(double runFitness, double runMinTime)
+    private void CheckBestResult(double runFitness, float runMinTime)
     {
         // has to be in here so it will be saved in the file
         this.Generation[this.runIndex].Fitness = runFitness;
@@ -382,7 +386,7 @@ public class GameController : MonoBehaviour
     {
         /* calculating fitness of the run*/
 
-        double runMinTime = -1.0;
+        float runMinTime = -1.0f;
         double runFitness = 0.0;
 
         // if mode is Median, we take median pass
@@ -478,12 +482,12 @@ public class GameController : MonoBehaviour
         this.carObject.transform.rotation = this.carSpawnPoint.transform.rotation;
         this.carObject.GetComponent<Rigidbody>().velocity = new Vector3(0.0f, 0.0f, 0.0f);
         this.carObject.GetComponent<Rigidbody>().angularVelocity = new Vector3(0.0f, 0.0f, 0.0f);
-        this.fitnessDeathTimer = 0.0;
-        this.speedDeathTimer = 0.0;
+        this.fitnessDeathTimer = 0.0f;
+        this.speedDeathTimer = 0.0f;
         this.bestFitnessInThisPass = 0.0;
-        this.distance = 0.0;
+        this.distance = 0.0f;
         this.previousPosition = this.carSpawnPoint.transform.position;
-        this.Timer = 0.0;
+        this.Timer = 0.0f;
         this.NextCheckpoint = 0;
         this.CollisionDetected = false;
         this.PassFitness = 0;
@@ -530,7 +534,7 @@ public class GameController : MonoBehaviour
     private struct Pass
     {
         public double Fitness;
-        public double Time;
+        public float Time;
         public double NextCheckpoint;
     }
 
