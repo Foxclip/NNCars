@@ -213,7 +213,7 @@ public class GameController : MonoBehaviour
             this.NextPass();
             return true;
         }
-        if (this.CollisionDetected)
+        if (CarController.Settings.DieOnCollision && this.CollisionDetected)
         {
             this.NextPass();
             return true;

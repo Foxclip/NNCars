@@ -535,5 +535,11 @@ public class CarController : MonoBehaviour
         /// </summary>
         [DataMember]
         public bool ReverseGear { get; set; } = false;
+
+        /// <summary>
+        /// Whether car will die on collision with a wall.
+        /// </summary>
+        [DataMember]
+        public bool DieOnCollision { get; set; } = true;
     }
 }
