@@ -414,7 +414,9 @@ public class CarController : MonoBehaviour
         }
 
         // setting value of UI motor bar
-        GameObject.Find("Canvas").transform.Find("MotorBar").gameObject.GetComponent<Slider>().value = (float)currentOutputs["motor"];
+        Transform motorBar = GameObject.Find("Canvas").transform.Find("MotorBar");
+        motorBar.gameObject.GetComponent<Slider>().value = (float)currentOutputs["motor"];
+        motorBar.Find("Text").GetComponent<Text>().text = $"{(float)currentOutputs["motor"]:0.0}";
 
         // steering value
         float steering = 0.0f;
