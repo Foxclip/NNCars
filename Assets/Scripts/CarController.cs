@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// For controlling the car.
@@ -399,9 +400,8 @@ public class CarController : MonoBehaviour
             }
         }
 
-        // getting output values
+        // motor value
         float motor = 0.0f;
-        float steering = 0.0f;
         if (StartupSettings.RegisteredOutputs.Contains("motor"))
         {
             motor = Settings.MaxMotorTorque * (float)currentOutputs["motor"];
@@ -412,6 +412,12 @@ public class CarController : MonoBehaviour
                 motor = Mathf.Max(0.0f, motor);
             }
         }
+
+        // setting value of UI motor bar
+        GameObject.Find("Canvas").transform.Find("MotorBar").gameObject.GetComponent<Slider>().value = (float)currentOutputs["motor"];
+
+        // steering value
+        float steering = 0.0f;
         if (StartupSettings.RegisteredOutputs.Contains("steering"))
         {
             steering = Settings.MaxSteeringAngle * (float)currentOutputs["steering"];
@@ -422,14 +428,17 @@ public class CarController : MonoBehaviour
             steering = Settings.MaxSteeringAngle * Input.GetAxisRaw("Horizontal");
         }
 
-        // apply values to car
+        // apply values to the car
         this.ApplyValues(motor, steering);
     }
 
     // detects if car collided with a wall
     private void OnCollisionEnter(Collision collision)
     {
-        this.gameController.CollisionDetected = true;
+        if (collision.gameObject.CompareTag("Wall"))
+        {
+            this.gameController.CollisionDetected = true;
+        }
     }
 
     /// <summary>
