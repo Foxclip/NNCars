@@ -202,12 +202,12 @@ public class GameController : MonoBehaviour
 
     private bool CheckDeathConditions()
     {
-        if (this.fitnessDeathTimer > Settings.TerminationDelay)
+        if (this.fitnessDeathTimer > CarController.Settings.TerminationDelay)
         {
             this.NextPass();
             return true;
         }
-        if (this.speedDeathTimer > Settings.TerminationDelay)
+        if (this.speedDeathTimer > CarController.Settings.TerminationDelay)
         {
             this.NextPass();
             return true;
@@ -245,7 +245,7 @@ public class GameController : MonoBehaviour
 
         // speed timer
         double currentCarVelocity = this.carObject.GetComponent<Rigidbody>().velocity.magnitude;
-        if (currentCarVelocity < Settings.TerminationSpeed)
+        if (currentCarVelocity < CarController.Settings.TerminationSpeed)
         {
             this.speedDeathTimer += Time.fixedDeltaTime;
         }
@@ -260,7 +260,7 @@ public class GameController : MonoBehaviour
         // has to update next checkpoint first
         if (this.NextCheckpoint < this.checkpoints.Count)
         {
-            if (Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position) < Settings.CheckpointReachDistance)
+            if (Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position) < CarController.Settings.CheckpointReachDistance)
             {
                 this.NextCheckpoint++;
             }
@@ -271,11 +271,11 @@ public class GameController : MonoBehaviour
         if (this.NextCheckpoint < this.checkpoints.Count)
         {
             float distanceToNextCheckpoint = Vector3.Distance(this.carObject.transform.position, this.checkpoints[this.NextCheckpoint].position);
-            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * Settings.DistanceBonusWeight;
+            distanceBonus = 1.0 / (distanceToNextCheckpoint + 1) * CarController.Settings.DistanceBonusWeight;
         }
 
         // checkpoint bonus
-        double checkpointBonus = this.NextCheckpoint * Settings.CheckpointBonusWeight;
+        double checkpointBonus = this.NextCheckpoint * CarController.Settings.CheckpointBonusWeight;
 
         this.PassFitness = checkpointBonus + distanceBonus;
     }
@@ -439,7 +439,7 @@ public class GameController : MonoBehaviour
         if (this.NextCheckpoint < this.checkpoints.Count)
         {
             double averageSpeed = this.distance / this.Timer;
-            speedBonus = Math.Tanh(averageSpeed * Settings.SpeedBonusWeight);
+            speedBonus = Math.Tanh(averageSpeed * CarController.Settings.SpeedBonusWeight);
             timeBonus = 0.0;
         }
         else
@@ -452,7 +452,7 @@ public class GameController : MonoBehaviour
         this.PassFitness += timeBonus;
 
         // steering bonus
-        double steeringBonus = 1.0 / (this.steeringAmount + 1) * Settings.SteeringPenaltyWeight;
+        double steeringBonus = 1.0 / (this.steeringAmount + 1) * CarController.Settings.SteeringPenaltyWeight;
         this.PassFitness += steeringBonus;
 
         Debug.Log($"Speed bonus: {speedBonus} Time bonus: {timeBonus} Steering bonus: {steeringBonus}");
@@ -587,12 +587,6 @@ public class GameController : MonoBehaviour
         public float SpeedupTimeScale { get; set; } = 100.0f;
 
         /// <summary>
-        /// Checkpoint is counted as reached when car is within this distance.
-        /// </summary>
-        [DataMember]
-        public float CheckpointReachDistance { get; set; } = 3.0f;
-
-        /// <summary>
         /// Minimal angle of random rotation in the beginning of each pass.
         /// </summary>
         [DataMember]
@@ -605,45 +599,16 @@ public class GameController : MonoBehaviour
         public float RandomAngleMax { get; set; } = 25.0f;
 
         /// <summary>
-        /// Pass is ended if car's speed is below termination speed or fitness does not improve for this amount of time.
+        /// If by some reason manual keyboard control is needed.
         /// </summary>
         [DataMember]
-        public float TerminationDelay { get; set; } = 1.0f;
-
-        /// <summary>
-        /// What speed is too low.
-        /// </summary>
-        [DataMember]
-        public float TerminationSpeed { get; set; } = 0.2f;
-
-        /// <summary>
-        /// Weight of the checkpoint bonus.
-        /// </summary>
-        [DataMember]
-        public float CheckpointBonusWeight { get; set; } = 100.0f;
-
-        /// <summary>
-        /// Weight of the distance bonus.
-        /// </summary>
-        [DataMember]
-        public float DistanceBonusWeight { get; set; } = 10.0f;
-
-        /// <summary>
-        /// Weight of the speed bonus.
-        /// </summary>
-        [DataMember]
-        public float SpeedBonusWeight { get; set; } = 1.0f;
-
-        /// <summary>
-        /// Weight of the steering penalty.
-        /// </summary>
-        [DataMember]
-        public float SteeringPenaltyWeight { get; set; } = 1.0f;
+        public bool ManualControl { get; set; } = false;
 
         /// <summary>
         /// Determines how fitness of the run is calculated.
         /// </summary>
         [DataMember]
         internal RunAcceptModes RunAcceptMode { get; set; }
+
     }
 }
