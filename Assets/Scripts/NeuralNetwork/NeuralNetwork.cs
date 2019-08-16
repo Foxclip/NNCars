@@ -547,107 +547,111 @@ public class NeuralNetwork
     public static NeuralNetwork LoadFromFile(string filename)
 #pragma warning restore SA1204 // Static elements should appear before instance elements
     {
-        StreamReader reader = new StreamReader(filename);
-        NeuralNetwork loadedNetwork = new NeuralNetwork
-        {
-            // loading network properties
-            Id = int.Parse(reader.ReadLine().Split(' ')[1]),
-            Fitness = double.Parse(reader.ReadLine().Split(' ')[1]),
-            BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]),
-            TrackName = reader.ReadLine().Split(' ')[1],
-            MinTime = double.Parse(reader.ReadLine().Split(' ')[1]),
-        };
+        // object which will be returned
+        NeuralNetwork loadedNetwork;
 
-        // these properties will be skipped on the second pass, so we need to know amount of them
-        int networkParameterCount = 0;
-        PropertyInfo[] pi = typeof(NeuralNetwork).GetProperties();
-        foreach (PropertyInfo info in pi)
+        using (StreamReader reader = new StreamReader(filename))
         {
-            if (info.PropertyType.IsPrimitive || info.PropertyType == typeof(string))
+            loadedNetwork = new NeuralNetwork
             {
-                networkParameterCount++;
-            }
-        }
+                // loading network properties
+                Id = int.Parse(reader.ReadLine().Split(' ')[1]),
+                Fitness = double.Parse(reader.ReadLine().Split(' ')[1]),
+                BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]),
+                TrackName = reader.ReadLine().Split(' ')[1],
+                MinTime = double.Parse(reader.ReadLine().Split(' ')[1]),
+            };
 
-        // skipping empty line
-        reader.ReadLine();
-
-        // first pass, loading list of neurons and creating them
-        while (true)
-        {
-            string nextLine = reader.ReadLine();
-
-            // checking if list has ended
-            if (nextLine == null || nextLine == string.Empty)
+            // these properties will be skipped on the second pass, so we need to know amount of them
+            int networkParameterCount = 0;
+            PropertyInfo[] pi = typeof(NeuralNetwork).GetProperties();
+            foreach (PropertyInfo info in pi)
             {
-                break;
+                if (info.PropertyType.IsPrimitive || info.PropertyType == typeof(string))
+                {
+                    networkParameterCount++;
+                }
             }
 
-            // skipping lines with weights
-            if (nextLine.StartsWith("    "))
-            {
-                continue;
-            }
-
-            // creating new neuron
-            Neuron newNeuron = null;
-            string[] neuronHeader = nextLine.Split(' ');
-            switch (neuronHeader[0])
-            {
-                case "Input": newNeuron = loadedNetwork.AddInputNeuron(string.Empty); break;
-                case "Hidden": newNeuron = loadedNetwork.AddHiddenNeuron(string.Empty); break;
-                case "Output": newNeuron = loadedNetwork.AddOutputNeuron(string.Empty); break;
-            }
-            newNeuron.Id = int.Parse(neuronHeader[1]);
-            newNeuron.Name = neuronHeader[2];
-        }
-
-        // reset position to the beginning of the file
-        reader.DiscardBufferedData();
-        reader.BaseStream.Seek(0, SeekOrigin.Begin);
-
-        // skipping network parameters and empty line in the beginning
-        for (int i = 0; i < networkParameterCount + 1; i++)
-        {
+            // skipping empty line
             reader.ReadLine();
-        }
 
-        // second pass, loading neurons
-        while (true)
-        {
-            // cheking if list has ended
-            string nextLine = reader.ReadLine();
-            if (nextLine == null || nextLine == string.Empty)
-            {
-                break;
-            }
-
-            // finding neuron
-            string[] neuronHeader = nextLine.Split(' ');
-            int neuronId = int.Parse(neuronHeader[1]);
-            Neuron neuron = loadedNetwork.GetNeuronById(neuronId);
-
-            // loading weights and bias
+            // first pass, loading list of neurons and creating them
             while (true)
             {
-                string[] weightOrBiasLine = reader.ReadLine().Trim().Split(' ');
-                string label = weightOrBiasLine[0];
-                double value = double.Parse(weightOrBiasLine[1]);
-                if (label == "w")
+                string nextLine = reader.ReadLine();
+
+                // checking if list has ended
+                if (nextLine == null || nextLine == string.Empty)
                 {
-                    int connection = int.Parse(weightOrBiasLine[2]);
-                    Neuron anotherNeuron = loadedNetwork.GetNeuronById(connection);
-                    Neuron.InputLink newInputLink = loadedNetwork.Connect(anotherNeuron, neuron);
-                    newInputLink.Weight = value;
+                    break;
                 }
-                else if (label == "b")
+
+                // skipping lines with weights
+                if (nextLine.StartsWith("    "))
                 {
-                    neuron.Bias = value;
-                    break; // line with bias is the last line of the neuron
+                    continue;
+                }
+
+                // creating new neuron
+                Neuron newNeuron = null;
+                string[] neuronHeader = nextLine.Split(' ');
+                switch (neuronHeader[0])
+                {
+                    case "Input": newNeuron = loadedNetwork.AddInputNeuron(string.Empty); break;
+                    case "Hidden": newNeuron = loadedNetwork.AddHiddenNeuron(string.Empty); break;
+                    case "Output": newNeuron = loadedNetwork.AddOutputNeuron(string.Empty); break;
+                }
+                newNeuron.Id = int.Parse(neuronHeader[1]);
+                newNeuron.Name = neuronHeader[2];
+            }
+
+            // reset position to the beginning of the file
+            reader.DiscardBufferedData();
+            reader.BaseStream.Seek(0, SeekOrigin.Begin);
+
+            // skipping network parameters and empty line in the beginning
+            for (int i = 0; i < networkParameterCount + 1; i++)
+            {
+                reader.ReadLine();
+            }
+
+            // second pass, loading neurons
+            while (true)
+            {
+                // cheking if list has ended
+                string nextLine = reader.ReadLine();
+                if (nextLine == null || nextLine == string.Empty)
+                {
+                    break;
+                }
+
+                // finding neuron
+                string[] neuronHeader = nextLine.Split(' ');
+                int neuronId = int.Parse(neuronHeader[1]);
+                Neuron neuron = loadedNetwork.GetNeuronById(neuronId);
+
+                // loading weights and bias
+                while (true)
+                {
+                    string[] weightOrBiasLine = reader.ReadLine().Trim().Split(' ');
+                    string label = weightOrBiasLine[0];
+                    double value = double.Parse(weightOrBiasLine[1]);
+                    if (label == "w")
+                    {
+                        int connection = int.Parse(weightOrBiasLine[2]);
+                        Neuron anotherNeuron = loadedNetwork.GetNeuronById(connection);
+                        Neuron.InputLink newInputLink = loadedNetwork.Connect(anotherNeuron, neuron);
+                        newInputLink.Weight = value;
+                    }
+                    else if (label == "b")
+                    {
+                        neuron.Bias = value;
+                        break; // line with bias is the last line of the neuron
+                    }
                 }
             }
         }
-
         return loadedNetwork;
     }
 
