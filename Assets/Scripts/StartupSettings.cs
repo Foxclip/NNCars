@@ -519,6 +519,7 @@ public class StartupSettings : MonoBehaviour
                     break;
             }
         }
+        this.FillControls(CarController.Settings);
     }
 
     /// <summary>
