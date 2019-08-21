@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Runtime.Serialization;
 using UnityEngine;
 using UnityEngine.UI;
@@ -312,7 +313,7 @@ public class GameController : MonoBehaviour
             this.breakthroughGen = this.generationIndex;
             this.breakthroughRun = this.runIndex;
 
-            // saving best neural network to file
+            // creating filename
             string trackName = this.track.name.Replace(" ", string.Empty);
             string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
             string minTimeString = $"t{runMinTime:0.00}";
@@ -320,7 +321,17 @@ public class GameController : MonoBehaviour
             string genRunString = "g" + this.generationIndex + "r" + this.runIndex;
             string filePath = trackName + "_" + dateString + "_" + minTimeString + "_" + bcString + "_" + genRunString + ".txt";
             Directory.CreateDirectory(this.networksFolderPath);
-            this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath);
+
+            // getting list of car settings
+            Dictionary<string, object> carSettingsList = new Dictionary<string, object>();
+            PropertyInfo[] properties = CarController.Settings.GetType().GetProperties();
+            foreach (PropertyInfo pi in properties)
+            {
+                carSettingsList.Add(pi.Name, pi.GetValue(CarController.Settings));
+            }
+
+            // saving current neural network to file
+            this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath, carSettingsList);
         }
 
         // updating best time
@@ -609,6 +620,5 @@ public class GameController : MonoBehaviour
         /// </summary>
         [DataMember]
         internal RunAcceptModes RunAcceptMode { get; set; }
-
     }
 }

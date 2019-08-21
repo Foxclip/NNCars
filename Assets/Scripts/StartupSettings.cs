@@ -480,7 +480,7 @@ public class StartupSettings : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads neural network from file and updates string with input/output count.
+    /// Loads neural network and car settings from file.
     /// </summary>
     /// <param name="filename">Name of the file.</param>
     private void LoadNetwork(string filename)
@@ -490,7 +490,35 @@ public class StartupSettings : MonoBehaviour
             return;
         }
 
-        SelectedNeuralNetwork = NeuralNetwork.LoadFromFile(filename);
+        Dictionary<string, string> loadedCarSettings = new Dictionary<string, string>();
+        SelectedNeuralNetwork = NeuralNetwork.LoadFromFile(filename, out loadedCarSettings);
+        PropertyInfo[] properties = CarController.Settings.GetType().GetProperties();
+        foreach (PropertyInfo property in properties)
+        {
+            string loadedPropertyValue = loadedCarSettings[property.Name];
+            switch (property.PropertyType.Name)
+            {
+                case nameof(Int32):
+                    property.SetValue(CarController.Settings, int.Parse(loadedPropertyValue));
+                    break;
+                case nameof(Single):
+                    property.SetValue(CarController.Settings, float.Parse(loadedPropertyValue));
+                    break;
+                case nameof(Boolean):
+                    property.SetValue(CarController.Settings, bool.Parse(loadedPropertyValue));
+                    break;
+                default:
+                    if (property.PropertyType.IsEnum)
+                    {
+                        property.SetValue(CarController.Settings, Enum.Parse(property.PropertyType, loadedPropertyValue));
+                    }
+                    else
+                    {
+                        Debug.Assert(false, $"Setting type {property.PropertyType.Name} is not supproted");
+                    }
+                    break;
+            }
+        }
     }
 
     /// <summary>

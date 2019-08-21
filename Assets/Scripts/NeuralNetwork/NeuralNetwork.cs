@@ -505,7 +505,8 @@ public class NeuralNetwork
     /// Saves neural network to txt file.
     /// </summary>
     /// <param name="filename">Name of the file.</param>
-    public void SaveToFile(string filename)
+    /// <param name="extraProperties">Extra data to be saved with the file.</param>
+    public void SaveToFile(string filename, Dictionary<string, object> extraProperties)
     {
         StreamWriter writer = new StreamWriter(filename);
 
@@ -515,6 +516,17 @@ public class NeuralNetwork
         writer.WriteLine("breakthroughCount " + this.BreakthroughCount);
         writer.WriteLine("trackName " + this.TrackName);
         writer.WriteLine("minTime " + this.MinTime);
+
+        // saving extra properties
+        if (extraProperties != null)
+        {
+            foreach (string extraPropertyName in extraProperties.Keys)
+            {
+                writer.WriteLine($"{extraPropertyName} {extraProperties[extraPropertyName]}");
+            }
+        }
+
+        // property list ends with blank line
         writer.WriteLine();
 
         // saving neurons
@@ -541,40 +553,39 @@ public class NeuralNetwork
     /// <summary>
     /// Loads neural network from txt file.
     /// </summary>
-    /// /// <param name="filename">Name of the file.</param>
+    /// <param name="filename">Name of the file.</param>
+    /// <param name="extraProperties">Dictionary for extra properties loaded from the file.</param>
     /// <returns>Neural network loaded from the file.</returns>
 #pragma warning disable SA1204 // Static elements should appear before instance elements
-    public static NeuralNetwork LoadFromFile(string filename)
+    public static NeuralNetwork LoadFromFile(string filename, out Dictionary<string, string> extraProperties)
 #pragma warning restore SA1204 // Static elements should appear before instance elements
     {
         // object which will be returned
-        NeuralNetwork loadedNetwork;
+        NeuralNetwork loadedNetwork = new NeuralNetwork();
 
         using (StreamReader reader = new StreamReader(filename))
         {
-            loadedNetwork = new NeuralNetwork
-            {
-                // loading network properties
-                Id = int.Parse(reader.ReadLine().Split(' ')[1]),
-                Fitness = double.Parse(reader.ReadLine().Split(' ')[1]),
-                BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]),
-                TrackName = reader.ReadLine().Split(' ')[1],
-                MinTime = double.Parse(reader.ReadLine().Split(' ')[1]),
-            };
+            // loading network properties
+            loadedNetwork.Id = int.Parse(reader.ReadLine().Split(' ')[1]);
+            loadedNetwork.Fitness = double.Parse(reader.ReadLine().Split(' ')[1]);
+            loadedNetwork.BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]);
+            loadedNetwork.TrackName = reader.ReadLine().Split(' ')[1];
+            loadedNetwork.MinTime = double.Parse(reader.ReadLine().Split(' ')[1]);
 
-            // these properties will be skipped on the second pass, so we need to know amount of them
-            int networkParameterCount = 0;
-            PropertyInfo[] pi = typeof(NeuralNetwork).GetProperties();
-            foreach (PropertyInfo info in pi)
+            // loading extra properties
+            extraProperties = new Dictionary<string, string>();
+            while (true)
             {
-                if (info.PropertyType.IsPrimitive || info.PropertyType == typeof(string))
+                string nextLine = reader.ReadLine();
+
+                // list of properties ends with empty line
+                if (nextLine == null || nextLine == string.Empty)
                 {
-                    networkParameterCount++;
+                    break;
                 }
-            }
 
-            // skipping empty line
-            reader.ReadLine();
+                extraProperties.Add(nextLine.Split(' ')[0], nextLine.Split(' ')[1]);
+            }
 
             // first pass, loading list of neurons and creating them
             while (true)
@@ -611,9 +622,13 @@ public class NeuralNetwork
             reader.BaseStream.Seek(0, SeekOrigin.Begin);
 
             // skipping network parameters and empty line in the beginning
-            for (int i = 0; i < networkParameterCount + 1; i++)
+            while (true)
             {
-                reader.ReadLine();
+                string nextLine = reader.ReadLine();
+                if (nextLine == string.Empty)
+                {
+                    break;
+                }
             }
 
             // second pass, loading neurons
@@ -867,9 +882,18 @@ internal class Program
         Console.WriteLine("file save/load test");
         Console.WriteLine();
 
-        network4.SaveToFile("network.txt");
-
-        NeuralNetwork network5 = NeuralNetwork.LoadFromFile("network.txt");
+        Dictionary<string, object> extraProps = new Dictionary<string, object>
+        {
+            { "propDouble", 5.3 },
+            { "propFloat", 1.1f },
+            { "propString", "abcd" },
+        };
+        network4.SaveToFile("network.txt", extraProps);
+        NeuralNetwork network5 = NeuralNetwork.LoadFromFile("network.txt", out Dictionary<string, string> loadedExtraProps);
+        foreach (string propName in loadedExtraProps.Keys)
+        {
+            Console.WriteLine($"{propName} {loadedExtraProps[propName]}");
+        }
         network5.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network5);
         Console.WriteLine();
