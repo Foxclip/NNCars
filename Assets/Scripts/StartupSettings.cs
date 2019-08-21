@@ -495,6 +495,10 @@ public class StartupSettings : MonoBehaviour
         PropertyInfo[] properties = CarController.Settings.GetType().GetProperties();
         foreach (PropertyInfo property in properties)
         {
+            if (!loadedCarSettings.ContainsKey(property.Name))
+            {
+                continue;
+            }
             string loadedPropertyValue = loadedCarSettings[property.Name];
             switch (property.PropertyType.Name)
             {
