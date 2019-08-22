@@ -89,13 +89,10 @@ public class StartupSettings : MonoBehaviour
             this.LoadNetwork(this.networkFile);
 
             // right track will be selected
-            if (SelectedNeuralNetwork.TrackName != null)
+            int index = this.selectTrackDropdown.options.FindIndex((x) => x.text == SelectedNeuralNetwork.ExtraProperties["trackName"]);
+            if (index != -1)
             {
-                int index = this.selectTrackDropdown.options.FindIndex((x) => x.text == SelectedNeuralNetwork.TrackName);
-                if (index != -1)
-                {
-                    this.selectTrackDropdown.value = index;
-                }
+                this.selectTrackDropdown.value = index;
             }
 
             // update input/ouput toggles to values from neural network
@@ -490,16 +487,15 @@ public class StartupSettings : MonoBehaviour
             return;
         }
 
-        Dictionary<string, string> loadedCarSettings = new Dictionary<string, string>();
-        SelectedNeuralNetwork = NeuralNetwork.LoadFromFile(filename, out loadedCarSettings);
+        SelectedNeuralNetwork = NeuralNetwork.LoadFromFile(filename);
         PropertyInfo[] properties = CarController.Settings.GetType().GetProperties();
         foreach (PropertyInfo property in properties)
         {
-            if (!loadedCarSettings.ContainsKey(property.Name))
+            if (!SelectedNeuralNetwork.ExtraProperties.ContainsKey(property.Name))
             {
                 continue;
             }
-            string loadedPropertyValue = loadedCarSettings[property.Name];
+            string loadedPropertyValue = SelectedNeuralNetwork.ExtraProperties[property.Name];
             switch (property.PropertyType.Name)
             {
                 case nameof(Int32):

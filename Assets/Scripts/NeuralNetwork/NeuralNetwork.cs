@@ -191,34 +191,16 @@ public class NeuralNetwork
     }
 
     /// <summary>
-    /// Fitness asigned by genetic algorithm. Is saved to file.
-    /// </summary>
-    [DataMember]
-    public double Fitness { get; set; } = 0;
-
-    /// <summary>
-    /// Measure of how long netwrok has been training. Is saved to file.
-    /// </summary>
-    [DataMember]
-    public int BreakthroughCount { get; set; } = 0;
-
-    /// <summary>
-    /// Name of the track network was training on.
-    /// </summary>
-    [DataMember]
-    public string TrackName { get; set; } = null;
-
-    /// <summary>
     /// Id of the network.
     /// </summary>
     [DataMember]
     public int Id { get; set; } = 0;
 
     /// <summary>
-    /// Minimal time around the track.
+    /// Dictionary for storing extra properties.
     /// </summary>
     [DataMember]
-    public double MinTime { get; set; }
+    public Dictionary<string, string> ExtraProperties { get; set; } = new Dictionary<string, string>();
 
     /// <summary>
     /// Adds new input neuron to the neural network (and, optionally, connect it to the next layer).
@@ -505,24 +487,19 @@ public class NeuralNetwork
     /// Saves neural network to txt file.
     /// </summary>
     /// <param name="filename">Name of the file.</param>
-    /// <param name="extraProperties">Extra data to be saved with the file.</param>
-    public void SaveToFile(string filename, Dictionary<string, object> extraProperties)
+    public void SaveToFile(string filename)
     {
         StreamWriter writer = new StreamWriter(filename);
 
         // saving network properties
         writer.WriteLine("id " + this.Id);
-        writer.WriteLine("fitness " + this.Fitness);
-        writer.WriteLine("breakthroughCount " + this.BreakthroughCount);
-        writer.WriteLine("trackName " + this.TrackName);
-        writer.WriteLine("minTime " + this.MinTime);
 
         // saving extra properties
-        if (extraProperties != null)
+        if (this.ExtraProperties != null)
         {
-            foreach (string extraPropertyName in extraProperties.Keys)
+            foreach (string extraPropertyName in this.ExtraProperties.Keys)
             {
-                writer.WriteLine($"{extraPropertyName} {extraProperties[extraPropertyName]}");
+                writer.WriteLine($"{extraPropertyName} {this.ExtraProperties[extraPropertyName]}");
             }
         }
 
@@ -554,10 +531,9 @@ public class NeuralNetwork
     /// Loads neural network from txt file.
     /// </summary>
     /// <param name="filename">Name of the file.</param>
-    /// <param name="extraProperties">Dictionary for extra properties loaded from the file.</param>
     /// <returns>Neural network loaded from the file.</returns>
 #pragma warning disable SA1204 // Static elements should appear before instance elements
-    public static NeuralNetwork LoadFromFile(string filename, out Dictionary<string, string> extraProperties)
+    public static NeuralNetwork LoadFromFile(string filename)
 #pragma warning restore SA1204 // Static elements should appear before instance elements
     {
         // object which will be returned
@@ -567,13 +543,8 @@ public class NeuralNetwork
         {
             // loading network properties
             loadedNetwork.Id = int.Parse(reader.ReadLine().Split(' ')[1]);
-            loadedNetwork.Fitness = double.Parse(reader.ReadLine().Split(' ')[1]);
-            loadedNetwork.BreakthroughCount = int.Parse(reader.ReadLine().Split(' ')[1]);
-            loadedNetwork.TrackName = reader.ReadLine().Split(' ')[1];
-            loadedNetwork.MinTime = double.Parse(reader.ReadLine().Split(' ')[1]);
 
             // loading extra properties
-            extraProperties = new Dictionary<string, string>();
             while (true)
             {
                 string nextLine = reader.ReadLine();
@@ -584,7 +555,7 @@ public class NeuralNetwork
                     break;
                 }
 
-                extraProperties.Add(nextLine.Split(' ')[0], nextLine.Split(' ')[1]);
+                loadedNetwork.ExtraProperties.Add(nextLine.Split(' ')[0], nextLine.Split(' ')[1]);
             }
 
             // first pass, loading list of neurons and creating them
@@ -882,17 +853,17 @@ internal class Program
         Console.WriteLine("file save/load test");
         Console.WriteLine();
 
-        Dictionary<string, object> extraProps = new Dictionary<string, object>
+        network4.ExtraProperties = new Dictionary<string, string>
         {
-            { "propDouble", 5.3 },
-            { "propFloat", 1.1f },
+            { "propDouble", 5.3.ToString() },
+            { "propFloat", 1.1f.ToString() },
             { "propString", "abcd" },
         };
-        network4.SaveToFile("network.txt", extraProps);
-        NeuralNetwork network5 = NeuralNetwork.LoadFromFile("network.txt", out Dictionary<string, string> loadedExtraProps);
-        foreach (string propName in loadedExtraProps.Keys)
+        network4.SaveToFile("network.txt");
+        NeuralNetwork network5 = NeuralNetwork.LoadFromFile("network.txt");
+        foreach (string propName in network5.ExtraProperties.Keys)
         {
-            Console.WriteLine($"{propName} {loadedExtraProps[propName]}");
+            Console.WriteLine($"{propName} {network5.ExtraProperties[propName]}");
         }
         network5.Feedforward(new Dictionary<string, double> { { "input1", 2 }, { "input2", 3 } });
         Console.WriteLine(network5);

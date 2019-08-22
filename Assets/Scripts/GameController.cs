@@ -140,20 +140,24 @@ public class GameController : MonoBehaviour
         if (StartupSettings.SelectedNeuralNetwork != null)
         {
             this.bestNetwork = StartupSettings.SelectedNeuralNetwork;
-            this.breakthroughCount = this.bestNetwork.BreakthroughCount;
+            this.breakthroughCount = int.Parse(this.bestNetwork.ExtraProperties["breakthroughCount"]);
 
             // if training is continued on the same track, there is no need to break all fitness records again
             // if it is different track, we have to start from zero
-            if (this.bestNetwork.TrackName == this.track.name)
+            if (this.bestNetwork.ExtraProperties["trackName"] == this.track.name)
             {
-                this.bestRunFitness = this.bestNetwork.Fitness;
+                this.bestRunFitness = double.Parse(this.bestNetwork.ExtraProperties["fitness"]);
             }
         }
         else
         {
             this.bestNetwork = new NeuralNetwork(StartupSettings.RegisteredInputs, StartupSettings.RegisteredOutputs, Settings.LayerCount, Settings.NeuronsInLayer);
+            this.bestNetwork.ExtraProperties.Add("trackName", "empty");
+            this.bestNetwork.ExtraProperties.Add("fitness", "0");
+            this.bestNetwork.ExtraProperties.Add("minTime", "-1");
+            this.bestNetwork.ExtraProperties.Add("breakthroughCount", "0");
         }
-        this.bestNetwork.TrackName = this.track.name;
+        this.bestNetwork.ExtraProperties["trackName"] = this.track.name;
 
         // preparing simulation
         this.PreGeneration();
@@ -297,8 +301,8 @@ public class GameController : MonoBehaviour
     private void CheckBestResult(double runFitness, float runMinTime)
     {
         // has to be in here so it will be saved in the file
-        this.Generation[this.runIndex].Fitness = runFitness;
-        this.Generation[this.runIndex].MinTime = runMinTime;
+        this.Generation[this.runIndex].ExtraProperties["fitness"] = runFitness.ToString();
+        this.Generation[this.runIndex].ExtraProperties["minTime"] = runMinTime.ToString();
 
         // updating fitness and best results
         // if it is same neural network (run 0), result is not accepted, except if it is first update
@@ -306,7 +310,7 @@ public class GameController : MonoBehaviour
         {
             // new breakthrough, new breakthough count
             this.breakthroughCount++;
-            this.Generation[this.runIndex].BreakthroughCount = this.breakthroughCount;
+            this.Generation[this.runIndex].ExtraProperties["breakthroughCount"] = this.breakthroughCount.ToString();
 
             // updating index of best run
             this.bestRunFitness = runFitness;
@@ -323,15 +327,14 @@ public class GameController : MonoBehaviour
             Directory.CreateDirectory(this.networksFolderPath);
 
             // getting list of car settings
-            Dictionary<string, object> carSettingsList = new Dictionary<string, object>();
             PropertyInfo[] properties = CarController.Settings.GetType().GetProperties();
-            foreach (PropertyInfo pi in properties)
+            foreach (PropertyInfo property in properties)
             {
-                carSettingsList.Add(pi.Name, pi.GetValue(CarController.Settings));
+                this.Generation[this.runIndex].ExtraProperties.AddOrUpdate(property.Name, property.GetValue(CarController.Settings).ToString());
             }
 
             // saving current neural network to file
-            this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath, carSettingsList);
+            this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath);
         }
 
         // updating best time
@@ -345,10 +348,10 @@ public class GameController : MonoBehaviour
     // is called after generation is complete
     private void PostGeneration()
     {
-        this.Generation.Sort((x, y) => -x.Fitness.CompareTo(y.Fitness));
+        this.Generation.Sort((x, y) => -double.Parse(x.ExtraProperties["fitness"]).CompareTo(double.Parse(y.ExtraProperties["fitness"])));
 
         // if we have new best result
-        if (this.Generation[0].Fitness > this.bestNetwork.Fitness)
+        if (double.Parse(this.Generation[0].ExtraProperties["fitness"]) > double.Parse(this.bestNetwork.ExtraProperties["fitness"]))
         {
             this.bestNetwork = this.Generation[0];
         }
@@ -361,10 +364,12 @@ public class GameController : MonoBehaviour
         List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
         for (int i = 0; i < Settings.PopulationSize; i++)
         {
-            // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
             NeuralNetwork newNetwork = this.bestNetwork.Copy();
+
+            // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
             double power = i == 0 ? double.NegativeInfinity : i - Settings.PopulationSize + 1;
             newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow(10, power));
+
             newGeneration.Add(newNetwork);
         }
 

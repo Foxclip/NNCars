@@ -7,7 +7,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 /// <summary>
 /// Some helpful functions.
 /// </summary>
-public class Utils
+public static class Utils
 {
     // random number generator is initialized on the start of the program
     private static readonly Random RandomGenerator = new Random();
@@ -66,6 +66,42 @@ public class Utils
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Adds key to a dictionary if it doesn't already contains that key.
+    /// </summary>
+    /// <typeparam name="TKey">Type of the key.</typeparam>
+    /// <typeparam name="TValue">Type of the value.</typeparam>
+    /// <param name="dict">Dictionary to add key to.</param>
+    /// <param name="key">Key name.</param>
+    /// <param name="value">Value.</param>
+    public static void AddIfNotExists<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue value)
+    {
+        if (!dict.ContainsKey(key))
+        {
+            dict.Add(key, value);
+        }
+    }
+
+    /// <summary>
+    /// Adds key to a dictionary if it doesn't already contains that key or updates the value if it does.
+    /// </summary>
+    /// <typeparam name="TKey">Type of the key.</typeparam>
+    /// <typeparam name="TValue">Type of the value.</typeparam>
+    /// <param name="dict">Dictionary.</param>
+    /// <param name="key">Key name.</param>
+    /// <param name="value">Value.</param>
+    public static void AddOrUpdate<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue value)
+    {
+        if (!dict.ContainsKey(key))
+        {
+            dict.Add(key, value);
+        }
+        else
+        {
+            dict[key] = value;
+        }
     }
 
     /// <summary>
