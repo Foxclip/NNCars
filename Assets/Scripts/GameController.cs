@@ -361,18 +361,10 @@ public class GameController : MonoBehaviour
         List<NeuralNetwork> newGeneration = new List<NeuralNetwork>();
         for (int i = 0; i < Settings.PopulationSize; i++)
         {
-            NeuralNetwork newNetwork;
-
             // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
-            if (i == 0)
-            {
-                newNetwork = this.bestNetwork.Copy();
-            }
-            else
-            {
-                newNetwork = this.bestNetwork.Copy();
-            }
-            newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow((double)i / Settings.PopulationSize, Settings.MutationPower));
+            NeuralNetwork newNetwork = this.bestNetwork.Copy();
+            double power = i == 0 ? double.NegativeInfinity : i - Settings.PopulationSize + 1;
+            newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow(10, power));
             newGeneration.Add(newNetwork);
         }
 
