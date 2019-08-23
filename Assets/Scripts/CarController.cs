@@ -12,6 +12,7 @@ using UnityEngine.UI;
 public class CarController : MonoBehaviour
 {
     private const double FPS = 60.0;                                     // frames per second, is used to calculate size of input/output queues
+    private const int MinSteps = 3;                                      // minimum steps for input/output queues. Second derivatives require at least 3 steps
     private readonly List<string> calculatedPlainInputs = new List<string>(); // list of inputs that are calculated
     private readonly List<string> firstDerivativeNames = new List<string>();
     private readonly List<string> secondDerivativeNames = new List<string>();
@@ -52,7 +53,9 @@ public class CarController : MonoBehaviour
         "RayLeft90", "RayRight90",
         "RayLeftFront22", "RayRightFront22",
         "RayLeft68", "RayRight68",
-        "Speed", "FrontSlip", "RearSlip", "Steering",
+        "Speed",
+        "FrontSlip", "RearSlip",
+        "Steering",
     };
 
     /// <summary>
@@ -213,8 +216,9 @@ public class CarController : MonoBehaviour
         }
 
         // calculating lengths of input/output queues
-        this.inputSteps = (int)(Settings.InputQueueTime * FPS);
-        this.outputSteps = (int)(Settings.OutputQueueTime * FPS);
+        // derivatives require some minimal amount of steps
+        this.inputSteps = Math.Max((int)(Settings.InputQueueTime * FPS), MinSteps);
+        this.outputSteps = Math.Max((int)(Settings.OutputQueueTime * FPS), MinSteps);
 
         // input/output queues should be reset before starting, since neural network takes values from the front of the queue
         this.ResetQueues();
