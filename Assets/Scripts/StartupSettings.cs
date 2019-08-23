@@ -61,6 +61,11 @@ public class StartupSettings : MonoBehaviour
     public static int TrackIndex { get; set; } = 0;
 
     /// <summary>
+    /// Whether saved fitness should be set to 0.
+    /// </summary>
+    public static bool ResetFitness { get; set; } = false;
+
+    /// <summary>
     /// List of inputs in the simulation.
     /// </summary>
     public static List<string> RegisteredInputs { get; set; } = new List<string>();
@@ -147,6 +152,16 @@ public class StartupSettings : MonoBehaviour
     }
 
     /// <summary>
+    /// Reset Fitness toggle event.
+    /// </summary>
+    /// <param name="value">Value of the toggle.</param>
+    public void ResetFitnessToggle(bool value)
+    {
+        ResetFitness = value;
+        Debug.Log($"ResetFitness set to {value}");
+    }
+
+    /// <summary>
     /// Start button event.
     /// </summary>
     public void StartSimulation()
@@ -215,7 +230,8 @@ public class StartupSettings : MonoBehaviour
         this.inputOutputCountText.text = string.Empty;
 
         // getting some UI controls
-        this.selectTrackDropdown = this.transform.Find("Select Track").transform.Find("Select Track Dropdown").GetComponent<Dropdown>();
+        Transform selectTrackTransform = this.transform.Find("Select Track");
+        this.selectTrackDropdown = selectTrackTransform.transform.Find("Select Track Dropdown").GetComponent<Dropdown>();
 
         this.GenerateInputOutputToggles();
         this.GenerateSettingsUIControls();

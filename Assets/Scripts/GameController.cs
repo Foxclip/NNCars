@@ -144,7 +144,7 @@ public class GameController : MonoBehaviour
 
             // if training is continued on the same track, there is no need to break all fitness records again
             // if it is different track, we have to start from zero
-            if (this.bestNetwork.ExtraProperties["trackName"] == this.track.name)
+            if (!StartupSettings.ResetFitness)
             {
                 this.bestRunFitness = double.Parse(this.bestNetwork.ExtraProperties["fitness"]);
             }
