@@ -62,7 +62,12 @@ public class CarController : MonoBehaviour
     /// Names of possible outputs of the neural network.
     /// List of toggles in StartupSettings will be generated based on these.
     /// </summary>
-    public static List<string> PossibleOutputs { get; set; } = new List<string> { "motor", "steering" };
+    public static List<string> PossibleOutputs { get; set; } = new List<string>
+    {
+        "motor",
+        "steering",
+        "brakes",
+    };
 
     /// <summary>
     /// Current neural network assigned to the car.
@@ -135,7 +140,7 @@ public class CarController : MonoBehaviour
         visualWheel.transform.rotation = rotation * Quaternion.Euler(0.0f, 0.0f, 90.0f);
     }
 
-    private void ApplyValues(float motor, float steering, bool clear = false)
+    private void ApplyValues(float motor, float steering, float brakes, bool clear = false)
     {
         // setting values to the wheels
         foreach (AxleInfo axleInfo in this.axleInfos)
@@ -165,6 +170,11 @@ public class CarController : MonoBehaviour
             {
                 axleInfo.LeftWheel.motorTorque = motor;
                 axleInfo.RightWheel.motorTorque = motor;
+            }
+            if (axleInfo.Brakes)
+            {
+                axleInfo.LeftWheel.brakeTorque = brakes;
+                axleInfo.RightWheel.brakeTorque = brakes;
             }
 
             // visual wheels have to be updated
@@ -230,7 +240,7 @@ public class CarController : MonoBehaviour
         if (this.gameController.Timer == 0.0)
         {
             this.rb.isKinematic = true;
-            this.ApplyValues(0.0f, 0.0f, true);
+            this.ApplyValues(0.0f, 0.0f, 0.0f, true);
             return;
         }
         else
@@ -417,10 +427,26 @@ public class CarController : MonoBehaviour
             }
         }
 
+        // brake value
+        float brakes = 0.0f;
+        if (StartupSettings.RegisteredOutputs.Contains("brakes"))
+        {
+            brakes = Settings.MaxBrakeTorque * (float)currentOutputs["brakes"];
+
+            // brakeTorque must be positive
+            brakes = Mathf.Max(0.0f, brakes);
+
+        }
+
         // setting value of UI motor bar
         Transform motorBar = GameObject.Find("Canvas").transform.Find("MotorBar");
         motorBar.gameObject.GetComponent<Slider>().value = (float)currentOutputs["motor"];
         motorBar.Find("Text").GetComponent<Text>().text = $"{(float)currentOutputs["motor"]:0.0}";
+
+        // setting value of UI brakes bar
+        Transform brakesBar = GameObject.Find("Canvas").transform.Find("BrakesBar");
+        brakesBar.gameObject.GetComponent<Slider>().value = (float)currentOutputs["brakes"];
+        brakesBar.Find("Text").GetComponent<Text>().text = $"{Mathf.Max(0.0f, (float)currentOutputs["brakes"]):0.0}";
 
         // steering value
         float steering = 0.0f;
@@ -435,7 +461,7 @@ public class CarController : MonoBehaviour
         }
 
         // apply values to the car
-        this.ApplyValues(motor, steering);
+        this.ApplyValues(motor, steering, brakes);
     }
 
     // detects if car collided with a wall
@@ -473,6 +499,11 @@ public class CarController : MonoBehaviour
         /// Whether axle is steerable.
         /// </summary>
         public bool Steering;
+
+        /// <summary>
+        /// Whether axle has brakes.
+        /// </summary>
+        public bool Brakes;
 #pragma warning restore SA1401 // Fields should be private
     }
 
@@ -508,6 +539,12 @@ public class CarController : MonoBehaviour
         /// </summary>
         [DataMember]
         public float MaxMotorTorque { get; set; } = 1000.0f;
+
+        /// <summary>
+        /// Maximum torque of the brakes.
+        /// </summary>
+        [DataMember]
+        public float MaxBrakeTorque { get; set; } = 1000.0f;
 
         /// <summary>
         /// Maximum steer angle the wheel can have.

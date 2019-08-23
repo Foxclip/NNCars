@@ -158,7 +158,6 @@ public class StartupSettings : MonoBehaviour
     public void ResetFitnessToggle(bool value)
     {
         ResetFitness = value;
-        Debug.Log($"ResetFitness set to {value}");
     }
 
     /// <summary>
