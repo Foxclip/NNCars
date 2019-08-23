@@ -577,12 +577,6 @@ public class GameController : MonoBehaviour
         public int PassCount { get; set; } = 3;
 
         /// <summary>
-        /// How likely small mutations are.
-        /// </summary>
-        [DataMember]
-        public float MutationPower { get; set; } = 10.0f;
-
-        /// <summary>
         /// Maximal amount of mutation in generation.
         /// </summary>
         [DataMember]
