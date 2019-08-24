@@ -69,7 +69,7 @@ public class GameController : MonoBehaviour
     /// <summary>
     /// Determines how run fitness is calculated.
     /// </summary>
-    internal enum RunAcceptModes
+    public enum RunAcceptModes
     {
         /// <summary>
         /// Run fitness is fitness of the worst pass in the run.
@@ -80,6 +80,27 @@ public class GameController : MonoBehaviour
         /// Run fitness is fitness of the median pass in the run.
         /// </summary>
         Median,
+    }
+
+    /// <summary>
+    /// Types of pass shuffling.
+    /// </summary>
+    public enum ShufflePassTypes
+    {
+        /// <summary>
+        /// Do not shuffle.
+        /// </summary>
+        None,
+
+        /// <summary>
+        /// From center to edges.
+        /// </summary>
+        CenterFirst,
+
+        /// <summary>
+        /// From edges to center.
+        /// </summary>
+        EdgesFirst,
     }
 
     /// <summary>
@@ -437,11 +458,11 @@ public class GameController : MonoBehaviour
         }
 
         // shuffling passes
-        if (Settings.ShufflePasses)
+        if (Settings.ShufflePasses != ShufflePassTypes.None)
         {
             List<Pass> shuffledPasses = new List<Pass>();
-            int startingIndex = (int)((this.passes.Count - 1) / 2.0);
-            int currentIndex = startingIndex;
+            int centerIndex = (int)((this.passes.Count - 1) / 2.0);
+            int currentIndex = centerIndex;
             while (true)
             {
                 if (currentIndex < 0 || currentIndex >= this.passes.Count)
@@ -450,11 +471,15 @@ public class GameController : MonoBehaviour
                 }
                 shuffledPasses.Add(this.passes[currentIndex]);
                 Debug.Log($"Added pass {currentIndex}");
-                if (currentIndex <= startingIndex)
+                if (currentIndex <= centerIndex)
                 {
                     currentIndex--;
                 }
-                currentIndex = (startingIndex * 2) - currentIndex;
+                currentIndex = (centerIndex * 2) - currentIndex;
+            }
+            if (Settings.ShufflePasses == ShufflePassTypes.EdgesFirst)
+            {
+                shuffledPasses.Reverse();
             }
             this.passes = shuffledPasses;
         }
@@ -597,7 +622,7 @@ public class GameController : MonoBehaviour
         /// Whether passes should be shuffled. Can help to speedup learning if there is bias related to order of passes.
         /// </summary>
         [DataMember]
-        public bool ShufflePasses { get; set; } = true;
+        public ShufflePassTypes ShufflePasses { get; set; } = ShufflePassTypes.EdgesFirst;
 
         /// <summary>
         /// Maximal amount of mutation in generation.
@@ -633,7 +658,7 @@ public class GameController : MonoBehaviour
         /// Determines how fitness of the run is calculated.
         /// </summary>
         [DataMember]
-        internal RunAcceptModes RunAcceptMode { get; set; }
+        public RunAcceptModes RunAcceptMode { get; set; } = RunAcceptModes.All;
     }
 
     // this is needed to calculate fitness of the run
