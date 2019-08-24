@@ -103,11 +103,6 @@ public class GameController : MonoBehaviour
     public int NextCheckpoint { get; set; } = 0;
 
     /// <summary>
-    /// Fitness of the current pass.
-    /// </summary>
-    public double PassFitness { get; set; }
-
-    /// <summary>
     /// How much time in seconds passed since beginning of the pass.
     /// </summary>
     public float Timer { get; set; } = 0.0f;
@@ -238,14 +233,14 @@ public class GameController : MonoBehaviour
     private void UpdateDeathTimers()
     {
         // fitness timer
-        if (this.PassFitness <= this.bestFitnessInThisPass)
+        if (this.passes[this.passIndex].Fitness <= this.bestFitnessInThisPass)
         {
             this.fitnessDeathTimer += Time.fixedDeltaTime;
         }
         else
         {
             this.fitnessDeathTimer = 0.0f;
-            this.bestFitnessInThisPass = this.PassFitness;
+            this.bestFitnessInThisPass = this.passes[this.passIndex].Fitness;
         }
 
         // speed timer
@@ -282,13 +277,13 @@ public class GameController : MonoBehaviour
         // checkpoint bonus
         double checkpointBonus = this.NextCheckpoint * CarController.Settings.CheckpointBonusWeight;
 
-        this.PassFitness = checkpointBonus + distanceBonus;
+        this.passes[this.passIndex].Fitness = checkpointBonus + distanceBonus;
     }
 
     private void UpdateUIText()
     {
         this.genRunPassText.text = "GEN " + this.generationIndex + " RUN " + this.runIndex + " PASS " + this.passIndex;
-        this.passFitnessText.text = "PASS FITNESS: " + this.PassFitness;
+        this.passFitnessText.text = "PASS FITNESS: " + this.passes[this.passIndex].Fitness;
         this.maxFitnessText.text = "MAX FITNESS: " + this.bestRunFitness;
         this.bestCarText.text = "BEST: GEN " + this.breakthroughGen + " RUN " + this.breakthroughRun;
         this.minTimeText.text = "MIN TIME: " + this.acceptedMinTime;
@@ -384,6 +379,7 @@ public class GameController : MonoBehaviour
         // if mode is Median, we take median pass
         if (Settings.RunAcceptMode == RunAcceptModes.Median)
         {
+            this.passes.Sort((x, y) => x.Fitness.CompareTo(y.Fitness));
             Pass medianPass = this.passes[(this.passes.Count - 1) / 2];
             runFitness = medianPass.Fitness;
             if (medianPass.NextCheckpoint >= this.checkpoints.Count)
@@ -429,8 +425,39 @@ public class GameController : MonoBehaviour
         NeuralNetwork network = this.Generation[this.runIndex];
         this.carController.NeuralNetwork = network;
 
-        // list of passes has to be cleared
+        // creating list of passes
         this.passes = new List<Pass>();
+        for (int i = 0; i < Settings.PassCount; i++)
+        {
+            Pass newPass = new Pass
+            {
+                StartingAngle = (float)Utils.MapRange(i, 0, Settings.PassCount - 1, Settings.RandomAngleMin, Settings.RandomAngleMax),
+            };
+            this.passes.Add(newPass);
+        }
+
+        // shuffling passes
+        if (Settings.ShufflePasses)
+        {
+            List<Pass> shuffledPasses = new List<Pass>();
+            int startingIndex = (int)((this.passes.Count - 1) / 2.0);
+            int currentIndex = startingIndex;
+            while (true)
+            {
+                if (currentIndex < 0 || currentIndex >= this.passes.Count)
+                {
+                    break;
+                }
+                shuffledPasses.Add(this.passes[currentIndex]);
+                Debug.Log($"Added pass {currentIndex}");
+                if (currentIndex <= startingIndex)
+                {
+                    currentIndex--;
+                }
+                currentIndex = (startingIndex * 2) - currentIndex;
+            }
+            this.passes = shuffledPasses;
+        }
 
         this.passIndex = 0;
     }
@@ -455,26 +482,26 @@ public class GameController : MonoBehaviour
             timeBonus = 1.0 / (this.Timer + 1.0);
         }
 
-        this.PassFitness += speedBonus;
-        this.PassFitness += timeBonus;
+        this.passes[this.passIndex].Fitness += speedBonus;
+        this.passes[this.passIndex].Fitness += timeBonus;
 
         // steering bonus
         double steeringBonus = 1.0 / (this.steeringAmount + 1) * CarController.Settings.SteeringPenaltyWeight;
-        this.PassFitness += steeringBonus;
+        this.passes[this.passIndex].Fitness += steeringBonus;
 
         Debug.Log($"Speed bonus: {speedBonus} Time bonus: {timeBonus} Steering bonus: {steeringBonus}");
 
         // adding this pass to the list
         Pass pass = new Pass
         {
-            Fitness = this.PassFitness,
+            Fitness = this.passes[this.passIndex].Fitness,
             Time = this.Timer,
             NextCheckpoint = this.NextCheckpoint,
         };
         this.passes.Add(pass);
 
         // if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
-        if (Settings.RunAcceptMode == RunAcceptModes.All && this.PassFitness <= this.bestRunFitness)
+        if (Settings.RunAcceptMode == RunAcceptModes.All && this.passes[this.passIndex].Fitness <= this.bestRunFitness)
         {
             return true;
         }
@@ -497,11 +524,10 @@ public class GameController : MonoBehaviour
         this.Timer = 0.0f;
         this.NextCheckpoint = 0;
         this.CollisionDetected = false;
-        this.PassFitness = 0;
         this.carController.ResetQueues();
 
         // randomized rotation
-        this.carObject.transform.rotation *= Quaternion.Euler(Vector3.up * (float)Utils.MapRange(this.passIndex, 0, Settings.PassCount - 1, Settings.RandomAngleMin, Settings.RandomAngleMax));
+        this.carObject.transform.rotation *= Quaternion.Euler(Vector3.up * this.passes[this.passIndex].StartingAngle);
 
         Debug.Log($"Gen {this.generationIndex} Run {this.runIndex} Pass {this.passIndex}");
     }
@@ -537,14 +563,6 @@ public class GameController : MonoBehaviour
         this.PrePass();
     }
 
-    // this is needed to calculate fitness of the run
-    private struct Pass
-    {
-        public double Fitness;
-        public float Time;
-        public double NextCheckpoint;
-    }
-
     /// <summary>
     /// Settings which are saved and loaded from config file.
     /// </summary>
@@ -574,6 +592,12 @@ public class GameController : MonoBehaviour
         /// </summary>
         [DataMember]
         public int PassCount { get; set; } = 3;
+
+        /// <summary>
+        /// Whether passes should be shuffled. Can help to speedup learning if there is bias related to order of passes.
+        /// </summary>
+        [DataMember]
+        public bool ShufflePasses { get; set; } = true;
 
         /// <summary>
         /// Maximal amount of mutation in generation.
@@ -610,5 +634,17 @@ public class GameController : MonoBehaviour
         /// </summary>
         [DataMember]
         internal RunAcceptModes RunAcceptMode { get; set; }
+    }
+
+    // this is needed to calculate fitness of the run
+    private class Pass
+    {
+        public float StartingAngle { get; set; }
+
+        public double Fitness { get; set; }
+
+        public double NextCheckpoint { get; set; }
+
+        public float Time { get; set; }
     }
 }
