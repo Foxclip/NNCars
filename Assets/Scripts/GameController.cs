@@ -298,51 +298,35 @@ public class GameController : MonoBehaviour
         this.fitnessDeathTimerText.text = string.Format("FIT: {0:0.0}", this.fitnessDeathTimer);
     }
 
-    private void CheckBestResult(double runFitness, float runMinTime)
+    private void UpdateBestResult(double runFitness, float runMinTime)
     {
-        // has to be in here so it will be saved in the file
-        this.Generation[this.runIndex].ExtraProperties["fitness"] = runFitness.ToString();
-        this.Generation[this.runIndex].ExtraProperties["minTime"] = runMinTime.ToString();
+        // new breakthrough, new breakthough count
+        this.breakthroughCount++;
+        this.Generation[this.runIndex].ExtraProperties["breakthroughCount"] = this.breakthroughCount.ToString();
 
-        // updating fitness and best results
-        // if it is same neural network (run 0), result is not accepted, except if it is first update
-        if (runFitness > this.bestRunFitness && (this.runIndex > 0 || this.bestRunFitness == 0.0))
+        // updating index of best run
+        this.bestRunFitness = runFitness;
+        this.breakthroughGen = this.generationIndex;
+        this.breakthroughRun = this.runIndex;
+
+        // creating filename
+        string trackName = this.track.name.Replace(" ", string.Empty);
+        string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+        string minTimeString = $"t{runMinTime:0.00}";
+        string bcString = "bc" + this.breakthroughCount;
+        string genRunString = "g" + this.generationIndex + "r" + this.runIndex;
+        string filePath = trackName + "_" + dateString + "_" + minTimeString + "_" + bcString + "_" + genRunString + ".txt";
+        Directory.CreateDirectory(this.networksFolderPath);
+
+        // getting list of car settings
+        PropertyInfo[] properties = CarController.Settings.GetType().GetProperties();
+        foreach (PropertyInfo property in properties)
         {
-            // new breakthrough, new breakthough count
-            this.breakthroughCount++;
-            this.Generation[this.runIndex].ExtraProperties["breakthroughCount"] = this.breakthroughCount.ToString();
-
-            // updating index of best run
-            this.bestRunFitness = runFitness;
-            this.breakthroughGen = this.generationIndex;
-            this.breakthroughRun = this.runIndex;
-
-            // creating filename
-            string trackName = this.track.name.Replace(" ", string.Empty);
-            string dateString = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-            string minTimeString = $"t{runMinTime:0.00}";
-            string bcString = "bc" + this.breakthroughCount;
-            string genRunString = "g" + this.generationIndex + "r" + this.runIndex;
-            string filePath = trackName + "_" + dateString + "_" + minTimeString + "_" + bcString + "_" + genRunString + ".txt";
-            Directory.CreateDirectory(this.networksFolderPath);
-
-            // getting list of car settings
-            PropertyInfo[] properties = CarController.Settings.GetType().GetProperties();
-            foreach (PropertyInfo property in properties)
-            {
-                this.Generation[this.runIndex].ExtraProperties.AddOrUpdate(property.Name, property.GetValue(CarController.Settings).ToString());
-            }
-
-            // saving current neural network to file
-            this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath);
+            this.Generation[this.runIndex].ExtraProperties.AddOrUpdate(property.Name, property.GetValue(CarController.Settings).ToString());
         }
 
-        // updating best time
-        // if run 0 improves time, it will be updated, but max fitness will not
-        if (runMinTime >= 0.0 && (runMinTime < this.acceptedMinTime || this.acceptedMinTime < 0.0))
-        {
-            this.acceptedMinTime = runMinTime;
-        }
+        // saving current neural network to file
+        this.Generation[this.runIndex].SaveToFile(StartupSettings.NetworksFolderPath + "/" + filePath);
     }
 
     // is called after generation is complete
@@ -419,8 +403,23 @@ public class GameController : MonoBehaviour
             }
         }
 
-        // check if result of this run is the best one
-        this.CheckBestResult(runFitness, runMinTime);
+        // has to be in here so it will be saved in the file
+        this.Generation[this.runIndex].ExtraProperties["fitness"] = runFitness.ToString();
+        this.Generation[this.runIndex].ExtraProperties["minTime"] = runMinTime.ToString();
+
+        // updating fitness and best results
+        // if it is same neural network (run 0), result is not accepted, except if it is first update
+        if (runFitness > this.bestRunFitness && (this.runIndex > 0 || this.bestRunFitness == 0.0))
+        {
+            this.UpdateBestResult(runFitness, runMinTime);
+        }
+
+        // updating best time
+        // if run 0 improves time, it will be updated, but max fitness will not
+        if (runMinTime >= 0.0 && (runMinTime < this.acceptedMinTime || this.acceptedMinTime < 0.0))
+        {
+            this.acceptedMinTime = runMinTime;
+        }
     }
 
     // called just after starting new run
