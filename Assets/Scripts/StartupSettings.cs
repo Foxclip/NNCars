@@ -559,6 +559,7 @@ public class StartupSettings : MonoBehaviour
         this.FillToggles(config.EnabledOutputList, this.outputToggles);
         this.UpdateRegisteredInputsOutputs(RegisteredInputs, this.inputToggles);
         this.UpdateRegisteredInputsOutputs(RegisteredOutputs, this.outputToggles);
+        this.selectTrackDropdown.value = Mathf.Max(0, this.selectTrackDropdown.options.FindIndex((x) => x.text == config.TrackName));
     }
 
     /// <summary>
@@ -609,8 +610,6 @@ public class StartupSettings : MonoBehaviour
             switch (property.PropertyType.Name)
             {
                 case nameof(Int32):
-                    control.GetComponent<TMP_InputField>().text = property.GetValue(settings).ToString();
-                    break;
                 case nameof(Single):
                     control.GetComponent<TMP_InputField>().text = property.GetValue(settings).ToString();
                     break;
@@ -636,7 +635,8 @@ public class StartupSettings : MonoBehaviour
     /// </summary>
     private void SaveConfig()
     {
-        Config config = new Config(new List<SettingList> { GameController.Settings, CarController.Settings }, RegisteredInputs, RegisteredOutputs);
+        string trackName = this.selectTrackDropdown.options[this.selectTrackDropdown.value].text;
+        Config config = new Config(new List<SettingList> { GameController.Settings, CarController.Settings }, RegisteredInputs, RegisteredOutputs, trackName);
         config.Save();
     }
 
@@ -664,12 +664,20 @@ public class StartupSettings : MonoBehaviour
         /// <param name="settings">Settings to be saved.</param>
         /// <param name="enabledInputList">List of enabled inputs to be saved.</param>
         /// <param name="enabledOutputList"> List of enabled outputs to be saved.</param>
-        public Config(List<SettingList> settings, List<string> enabledInputList, List<string> enabledOutputList)
+        /// <param name="trackName">Name of selected track.</param>
+        public Config(List<SettingList> settings, List<string> enabledInputList, List<string> enabledOutputList, string trackName)
         {
             this.Settings = settings;
             this.EnabledInputList = enabledInputList;
             this.EnabledOutputList = enabledOutputList;
+            this.TrackName = trackName;
         }
+
+        /// <summary>
+        /// Name of selected track.
+        /// </summary>
+        [DataMember]
+        public string TrackName { get; set; }
 
         /// <summary>
         /// List of enabled inputs.

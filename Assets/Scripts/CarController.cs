@@ -435,7 +435,6 @@ public class CarController : MonoBehaviour
 
             // brakeTorque must be positive
             brakes = Mathf.Max(0.0f, brakes);
-
         }
 
         // setting value of UI motor bar
