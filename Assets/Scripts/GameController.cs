@@ -516,14 +516,10 @@ public class GameController : MonoBehaviour
 
         Debug.Log($"Speed bonus: {speedBonus} Time bonus: {timeBonus} Steering bonus: {steeringBonus}");
 
-        // adding this pass to the list
-        Pass pass = new Pass
-        {
-            Fitness = this.passes[this.passIndex].Fitness,
-            Time = this.Timer,
-            NextCheckpoint = this.NextCheckpoint,
-        };
-        this.passes.Add(pass);
+        // setting parameters to current pass
+        Pass currentPass = this.passes[this.passIndex];
+        currentPass.Time = this.Timer;
+        currentPass.NextCheckpoint = this.NextCheckpoint;
 
         // if car was not able to improve best result, and we take the worst pass in the run as fitness of the whole run, there is no point in continuing this run
         if (Settings.RunAcceptMode == RunAcceptModes.All && this.passes[this.passIndex].Fitness <= this.bestRunFitness)
