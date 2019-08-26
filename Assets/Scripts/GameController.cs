@@ -106,6 +106,22 @@ public class GameController : MonoBehaviour
     }
 
     /// <summary>
+    /// How gradient descent iterations are distributed.
+    /// </summary>
+    public enum GradientDescentSeqTypes
+    {
+        /// <summary>
+        /// Low discrepancy sequence.
+        /// </summary>
+        LowDiscrepancy,
+
+        /// <summary>
+        /// 1 / 2^n
+        /// </summary>
+        Fading,
+    }
+
+    /// <summary>
     /// Current simulation settings.
     /// </summary>
     public static SimulationSettings Settings { get; set; } = new SimulationSettings();
@@ -380,7 +396,15 @@ public class GameController : MonoBehaviour
             if (i == 0)
             {
                 newNetwork.Diff(this.diffBaseNetwork);
-                double pushAmount = Utils.LowDiscrepancySequence(this.gradientDescentFailureCount, 1.0, (Math.Sqrt(5) - 1) / 2);
+                double pushAmount = 1.0;
+                if (Settings.GradientDescentSeq == GradientDescentSeqTypes.LowDiscrepancy)
+                {
+                    pushAmount = Utils.LowDiscrepancySequence(this.gradientDescentFailureCount, 1.0, (Math.Sqrt(5) - 1) / 2);
+                }
+                else if (Settings.GradientDescentSeq == GradientDescentSeqTypes.Fading)
+                {
+                    pushAmount = 1.0 / Math.Pow(2, this.gradientDescentFailureCount);
+                }
                 newNetwork.Push(pushAmount);
             }
             else
@@ -642,6 +666,12 @@ public class GameController : MonoBehaviour
         /// </summary>
         [DataMember]
         public float MaxMutation { get; set; } = 1.0f;
+
+        /// <summary>
+        /// Character of gradient descent iterations.
+        /// </summary>
+        [DataMember]
+        public GradientDescentSeqTypes GradientDescentSeq { get; set; } = GradientDescentSeqTypes.LowDiscrepancy;
 
         /// <summary>
         /// When pressing Space, simulation will speed up.
