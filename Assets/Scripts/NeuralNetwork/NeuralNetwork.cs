@@ -38,7 +38,6 @@ public enum NeuronType
 public class NeuralNetwork
 {
     private static int networkIdCounter = 0;
-
     [DataMember]
     private readonly List<Neuron> allNeurons = new List<Neuron>();
 
@@ -128,6 +127,17 @@ public class NeuralNetwork
             {
                 this.Connect(hiddenNeuron, outputNeuron);
             }
+        }
+    }
+
+    /// <summary>
+    /// List of all neurons.
+    /// </summary>
+    public List<Neuron> AllNeurons
+    {
+        get
+        {
+            return this.allNeurons;
         }
     }
 
@@ -360,6 +370,31 @@ public class NeuralNetwork
         foreach (Neuron neuron in this.OutputNeurons)
         {
             neuron.Mutate(power, maxMutation);
+        }
+    }
+
+    /// <summary>
+    /// Set deltas based on difference between networks.
+    /// </summary>
+    /// <param name="anotherNetwork">Another neural network.</param>
+    public void Diff(NeuralNetwork anotherNetwork)
+    {
+        List<Neuron> anotherNetworkNeurons = anotherNetwork.allNeurons;
+        for (int i = 0; i < this.allNeurons.Count; i++)
+        {
+            this.allNeurons[i].Diff(anotherNetworkNeurons[i]);
+        }
+    }
+
+    /// <summary>
+    /// Pushes weights and biases in the direction of deltas.
+    /// </summary>
+    /// <param name="factor">Deltas will be multipled by this number.</param>
+    public void Push(double factor)
+    {
+        foreach (Neuron neuron in this.allNeurons)
+        {
+            neuron.Push(factor);
         }
     }
 
@@ -903,5 +938,24 @@ internal class Program
         network5.Feedforward(new Dictionary<string, double> { { "input2", 2 }, { "newInput", 3 } });
         Console.WriteLine(network5);
         Console.WriteLine();
+
+        Console.WriteLine("Diff test");
+        Console.WriteLine();
+
+        NeuralNetwork network6 = network5.Copy();
+        network6.Mutate(1, 1);
+        network6.Diff(network5);
+        foreach (Neuron neuron in network6.AllNeurons)
+        {
+            Console.WriteLine($"{neuron.Name}");
+            foreach (double weightDelta in neuron.WeightDeltas)
+            {
+                Console.WriteLine($"    {weightDelta}");
+            }
+        }
+        Console.WriteLine(network6);
+        network6.Push(0.1);
+        network6.Feedforward(new Dictionary<string, double> { { "input2", 2 }, { "newInput", 3 } });
+        Console.WriteLine(network6);
     }
 }

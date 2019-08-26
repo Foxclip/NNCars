@@ -45,6 +45,16 @@ public class Neuron
     public double Value { get; set; } = 0;
 
     /// <summary>
+    /// List of last changes in the weigths.
+    /// </summary>
+    public List<double> WeightDeltas { get; set; } = new List<double>();
+
+    /// <summary>
+    /// Last change of the bias.
+    /// </summary>
+    public double BiasDelta { get; set; } = 0;
+
+    /// <summary>
     /// Id of layer in neural network, is assigned when sorting.
     /// </summary>
     public int LayerId { get; set; } = 0;
@@ -143,6 +153,33 @@ public class Neuron
         // mutating bias
         double biasMutationRate = Math.Pow(Utils.Rand(), power) * maxMutation;
         this.Bias += Utils.RandBetween(-biasMutationRate, biasMutationRate);
+    }
+
+    /// <summary>
+    /// Pushes weights and bias in the direction of deltas.
+    /// </summary>
+    /// <param name="factor">Deltas will be multipled by this number.</param>
+    public void Push(double factor)
+    {
+        for (int i = 0; i < this.GetWeights().Count; i++)
+        {
+            this.InputLinks[i].Weight += this.WeightDeltas[i] * factor;
+        }
+        this.Bias += this.BiasDelta * factor;
+    }
+
+    /// <summary>
+    /// Set deltas based on difference between neurons.
+    /// </summary>
+    /// <param name="anotherNeuron">Another neuron.</param>
+    public void Diff(Neuron anotherNeuron)
+    {
+        this.WeightDeltas.Clear();
+        for (int i = 0; i < this.InputLinks.Count; i++)
+        {
+            this.WeightDeltas.Add(this.InputLinks[i].Weight - anotherNeuron.InputLinks[i].Weight);
+        }
+        this.BiasDelta = this.Bias - anotherNeuron.Bias;
     }
 
     /// <summary>

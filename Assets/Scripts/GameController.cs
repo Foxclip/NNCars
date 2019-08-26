@@ -48,6 +48,8 @@ public class GameController : MonoBehaviour
 #pragma warning restore SA1214 // Readonly fields should appear before non-readonly fields
     private Transform carSpawnPoint;                                        // where car will be placed before strting a pass
     private NeuralNetwork bestNetwork;                                      // best result of the simulation
+    private NeuralNetwork diffBaseNetwork;                                  // best network in previous breakthrough
+    private int gradientDescentFailureCount = 0;                            // how much best result failed to improve
     private double bestFitnessInThisPass = 0.0;                             // best fitness achieved in this pass, pass is ended if it does not imporve for some amount of time
     private List<Pass> passes;                                              // list of passes in the run, used to calculate fitness of the run
     private float fitnessDeathTimer = 0.0f;                                 // how much time passed since last improvement of bestFitnessInThisPass
@@ -174,6 +176,8 @@ public class GameController : MonoBehaviour
             this.bestNetwork.ExtraProperties.Add("breakthroughCount", "0");
         }
         this.bestNetwork.ExtraProperties["trackName"] = this.track.name;
+
+        this.diffBaseNetwork = this.bestNetwork;
 
         // preparing simulation
         this.PreGeneration();
@@ -353,7 +357,13 @@ public class GameController : MonoBehaviour
         // if we have new best result
         if (double.Parse(this.Generation[0].ExtraProperties["fitness"]) > double.Parse(this.bestNetwork.ExtraProperties["fitness"]))
         {
+            this.diffBaseNetwork = this.bestNetwork;
+            this.gradientDescentFailureCount = 0;
             this.bestNetwork = this.Generation[0];
+        }
+        else
+        {
+            this.gradientDescentFailureCount++;
         }
     }
 
@@ -366,9 +376,18 @@ public class GameController : MonoBehaviour
         {
             NeuralNetwork newNetwork = this.bestNetwork.Copy();
 
-            // WARNING: results of the run 0 are not counted, so if you will make first network in generation mutate, make results of the run 0 count
-            double power = i == 0 ? double.NegativeInfinity : i - Settings.PopulationSize + 1;
-            newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow(10, power));
+            // run 0 is gradient descent, the rest is random
+            if (i == 0)
+            {
+                newNetwork.Diff(this.diffBaseNetwork);
+                double pushAmount = Utils.LowDiscrepancySequence(this.gradientDescentFailureCount, 1.0, (Math.Sqrt(5) - 1) / 2);
+                newNetwork.Push(pushAmount);
+            }
+            else
+            {
+                double power = i - Settings.PopulationSize + 1;
+                newNetwork.Mutate(1, Settings.MaxMutation * Math.Pow(10, power));
+            }
 
             newGeneration.Add(newNetwork);
         }
@@ -425,8 +444,7 @@ public class GameController : MonoBehaviour
         this.Generation[this.runIndex].ExtraProperties["minTime"] = runMinTime.ToString();
 
         // updating fitness and best results
-        // if it is same neural network (run 0), result is not accepted, except if it is first update
-        if (runFitness > this.bestRunFitness && (this.runIndex > 0 || this.bestRunFitness == 0.0))
+        if (runFitness > this.bestRunFitness)
         {
             this.UpdateBestResult(runFitness, runMinTime);
         }
@@ -470,7 +488,6 @@ public class GameController : MonoBehaviour
                     break;
                 }
                 shuffledPasses.Add(this.passes[currentIndex]);
-                Debug.Log($"Added pass {currentIndex}");
                 if (currentIndex <= centerIndex)
                 {
                     currentIndex--;

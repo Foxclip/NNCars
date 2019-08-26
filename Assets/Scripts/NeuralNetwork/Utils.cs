@@ -105,6 +105,28 @@ public static class Utils
     }
 
     /// <summary>
+    /// Returns number from low discrepancy additive sequence.
+    /// </summary>
+    /// <param name="index">Index of iteration.</param>
+    /// <param name="s">Value of index 0. Must be between 0 and 1.</param>
+    /// <param name="a">Number which will be added. Good value is (Math.Sqrt(5) - 1) / 2.</param>
+    /// <returns>Number from low discrepancy additive sequence.</returns>
+    public static double LowDiscrepancySequence(int index, double s, double a)
+    {
+        // allows to have maximum possible s if index is 0
+        if (index == 0)
+        {
+            return s;
+        }
+
+        for (int i = 0; i < index; i++)
+        {
+            s = (s + a) % 1;
+        }
+        return s;
+    }
+
+    /// <summary>
     /// Reference Article http://www.codeproject.com/KB/tips/SerializedObjectCloner.aspx
     /// Provides a method for performing a deep copy of an object.
     /// Binary Serialization is used to perform the copy.
