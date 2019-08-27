@@ -336,6 +336,9 @@ public class GameController : MonoBehaviour
 
     private void UpdateBestResult(double runFitness, float runMinTime)
     {
+
+        Debug.Log($"Updating best result, runFitness {runFitness} bestRunFitness {this.bestRunFitness}");
+
         // new breakthrough, new breakthough count
         this.breakthroughCount++;
         this.Generation[this.runIndex].ExtraProperties["breakthroughCount"] = this.breakthroughCount.ToString();

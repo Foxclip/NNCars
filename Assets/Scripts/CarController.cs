@@ -415,37 +415,38 @@ public class CarController : MonoBehaviour
         }
 
         // motor value
-        float motor = 0.0f;
+        float motorValue = 0.0f;
+        float motorOutput = 0.0f;
         if (StartupSettings.RegisteredOutputs.Contains("motor"))
         {
-            motor = Settings.MaxMotorTorque * (float)currentOutputs["motor"];
+            motorOutput = (float)currentOutputs["motor"];
+            motorValue = Settings.MaxMotorTorque * motorOutput;
 
             // if car cannot reverse
             if (!Settings.ReverseGear)
             {
-                motor = Mathf.Max(0.0f, motor);
+                motorValue = Mathf.Max(0.0f, motorValue);
             }
-        }
-
-        // brake value
-        float brakes = 0.0f;
-        if (StartupSettings.RegisteredOutputs.Contains("brakes"))
-        {
-            brakes = Settings.MaxBrakeTorque * (float)currentOutputs["brakes"];
-
-            // brakeTorque must be positive
-            brakes = Mathf.Max(0.0f, brakes);
         }
 
         // setting value of UI motor bar
         Transform motorBar = GameObject.Find("Canvas").transform.Find("MotorBar");
-        motorBar.gameObject.GetComponent<Slider>().value = (float)currentOutputs["motor"];
-        motorBar.Find("Text").GetComponent<Text>().text = $"{(float)currentOutputs["motor"]:0.0}";
+        motorBar.gameObject.GetComponent<Slider>().value = motorOutput;
+        motorBar.Find("Text").GetComponent<Text>().text = $"{motorOutput:0.0}";
+
+        // brake value
+        float brakesValue = 0.0f;
+        float brakesOutput = 0.0f;
+        if (StartupSettings.RegisteredOutputs.Contains("brakes"))
+        {
+            brakesOutput = Mathf.Max(0.0f, (float)currentOutputs["brakes"]);
+            brakesValue = Settings.MaxBrakeTorque * brakesOutput;
+        }
 
         // setting value of UI brakes bar
         Transform brakesBar = GameObject.Find("Canvas").transform.Find("BrakesBar");
-        brakesBar.gameObject.GetComponent<Slider>().value = (float)currentOutputs["brakes"];
-        brakesBar.Find("Text").GetComponent<Text>().text = $"{Mathf.Max(0.0f, (float)currentOutputs["brakes"]):0.0}";
+        brakesBar.gameObject.GetComponent<Slider>().value = brakesOutput;
+        brakesBar.Find("Text").GetComponent<Text>().text = $"{brakesOutput:0.0}";
 
         // steering value
         float steering = 0.0f;
@@ -453,14 +454,16 @@ public class CarController : MonoBehaviour
         {
             steering = Settings.MaxSteeringAngle * (float)currentOutputs["steering"];
         }
+
+        // manual control
         if (GameController.Settings.ManualControl)
         {
-            motor = Settings.MaxMotorTorque * Input.GetAxisRaw("Vertical");
+            motorValue = Settings.MaxMotorTorque * Input.GetAxisRaw("Vertical");
             steering = Settings.MaxSteeringAngle * Input.GetAxisRaw("Horizontal");
         }
 
         // apply values to the car
-        this.ApplyValues(motor, steering, brakes);
+        this.ApplyValues(motorValue, steering, brakesValue);
     }
 
     // detects if car collided with a wall
